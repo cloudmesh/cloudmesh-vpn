@@ -1,10 +1,12 @@
-from cloudmesh.shell.command import command
-from cloudmesh.shell.command import PluginCommand
-from cloudmesh.vpn.api.manager import Manager
+import os
+
 from cloudmesh.common.console import Console
-from cloudmesh.common.util import path_expand
-from pprint import pprint
 from cloudmesh.common.debug import VERBOSE
+from cloudmesh.common.util import yn_choice
+from cloudmesh.shell.command import PluginCommand
+from cloudmesh.shell.command import command
+from cloudmesh.shell.command import map_parameters
+from cloudmesh.common.Shell import Shell
 
 
 class VpnCommand(PluginCommand):
@@ -16,10 +18,12 @@ class VpnCommand(PluginCommand):
         ::
 
           Usage:
-                vpn --file=FILE
-                vpn list
+                vpn connect [--service=SERVICE]
+                vpn disconnect
+                vpn info
+                vpn install
 
-          This command does some useful things.
+          This command manages the von connection
 
           Arguments:
               FILE   a file name
@@ -28,19 +32,35 @@ class VpnCommand(PluginCommand):
               -f      specify the file
 
         """
-        arguments.FILE = arguments['--file'] or None
 
-        VERBOSE(arguments)
+        map_parameters(arguments, "service")
 
-        m = Manager()
 
-        if arguments.FILE:
-            print("option a")
-            m.list(path_expand(arguments.FILE))
+        if arguments.service is None:
+            arguments.service = "https://vpn.iu.edu"
 
-        elif arguments.list:
-            print("option b")
-            m.list("just calling list without parameter")
+        if arguments.connect:
+            Console.ok("Connecting ...")
 
-        Console.error("This is just a sample")
+            os.system("sudo openconnect -b"
+                      " --cafile /etc/ssl/certs/ca-certificates.crt"
+                      f" --protocol=pulse {arguments.service}")
+
+        elif arguments.disconnect:
+            Console.ok("Disconnecting ...")
+            os.system("sudo killall -SIGINT openconnect")
+        elif arguments.install:
+
+            found = Shell.which("openconnect")
+
+            if found is None:
+                Console.ok("Installing")
+                if yn_choice("This command is only supported on Ubunto. Continue"):
+                    os.system("sudo apt-get install openconnect")
+                else:
+                    Console.error("cms vpn is only supported on Linux.")
+
+            else:
+                Console.error("vpn client is already installed")
+
         return ""
