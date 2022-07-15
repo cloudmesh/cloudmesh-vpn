@@ -33,34 +33,31 @@ class VpnCommand(PluginCommand):
 
         """
 
+
         map_parameters(arguments, "service")
 
-
-        if arguments.service is None:
-            arguments.service = "https://vpn.iu.edu"
+        from cloudmesh.vpn.vpn import Vpn
+        vpn = Vpn(arguments.service)
 
         if arguments.connect:
             Console.ok("Connecting ...")
-
-            os.system("sudo openconnect -b"
-                      " --cafile /etc/ssl/certs/ca-certificates.crt"
-                      f" --protocol=pulse {arguments.service}")
+            vpn.connect()
 
         elif arguments.disconnect:
             Console.ok("Disconnecting ...")
-            os.system("sudo killall -SIGINT openconnect")
-        elif arguments.install:
+            vpn.disconnect()
 
-            found = Shell.which("openconnect")
-
-            if found is None:
-                Console.ok("Installing")
-                if yn_choice("This command is only supported on Ubunto. Continue"):
-                    os.system("sudo apt-get install openconnect")
-                else:
-                    Console.error("cms vpn is only supported on Linux.")
-
-            else:
-                Console.error("vpn client is already installed")
+        # elif arguments.install:
+        #     found = Shell.which("openconnect")
+        #
+        #     if found is None:
+        #         Console.ok("Installing")
+        #         if yn_choice("This command is only supported on Ubunto. Continue"):
+        #             os.system("sudo apt-get install openconnect")
+        #         else:
+        #             Console.error("cms vpn is only supported on Linux.")
+        #
+        #     else:
+        #         Console.error("vpn client is already installed")
 
         return ""
