@@ -1,12 +1,7 @@
-import os
-
 from cloudmesh.common.console import Console
-from cloudmesh.common.debug import VERBOSE
-from cloudmesh.common.util import yn_choice
 from cloudmesh.shell.command import PluginCommand
 from cloudmesh.shell.command import command
 from cloudmesh.shell.command import map_parameters
-from cloudmesh.common.Shell import Shell
 
 
 class VpnCommand(PluginCommand):
@@ -18,33 +13,41 @@ class VpnCommand(PluginCommand):
         ::
 
           Usage:
-                vpn connect [--service=SERVICE]
-                vpn disconnect
-                vpn info
-                vpn install
+                vpn connect [--service=SERVICE] [-v]
+                vpn disconnect [-v]
+                vpn status [-v]
 
           This command manages the von connection
 
-          Arguments:
-              FILE   a file name
-
           Options:
-              -f      specify the file
+              -v      debug [default: False]
 
         """
 
         map_parameters(arguments, "service")
 
         from cloudmesh.vpn.vpn import Vpn
-        vpn = Vpn(arguments.service)
+        vpn = Vpn(arguments.service, debug=arguments["-v"])
 
         if arguments.connect:
-            Console.ok("Connecting ...")
+            Console.ok("Connecting ... ")
             vpn.connect()
+            if vpn.enabled:
+                Console.ok("ok")
+            else:
+                Console.error("failed")
 
         elif arguments.disconnect:
-            Console.ok("Disconnecting ...")
+            Console.ok("Disconnecting ... ")
             vpn.disconnect()
+            if not vpn.enabled:
+                Console.ok("ok")
+            else:
+                Console.error("failed")
+
+
+        elif arguments.status:
+            print(vpn.enabled)
 
         # elif arguments.install:
         #     found = Shell.which("openconnect")
