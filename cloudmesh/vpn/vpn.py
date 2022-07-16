@@ -24,7 +24,7 @@ import os
 class Vpn:
 
     def __init__(self, service=None):
-        if service == None or service == "uva":
+        if service is None or service == "uva":
             self.service = "https://uva-anywhere-1.itc.virginia.edu"
         elif service == "iu":
             self.service = "https://vpn.iu.edu"

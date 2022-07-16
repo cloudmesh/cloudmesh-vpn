@@ -33,7 +33,6 @@ class VpnCommand(PluginCommand):
 
         """
 
-
         map_parameters(arguments, "service")
 
         from cloudmesh.vpn.vpn import Vpn
