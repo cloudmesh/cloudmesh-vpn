@@ -1,7 +1,12 @@
 import pkg_resources
 import requests
+import pexpect
+import time
+import sys
+from pexpect.popen_spawn import PopenSpawn
 
 from cloudmesh.common.Shell import Shell
+from cloudmesh.common.Shell import Console
 from cloudmesh.common.systeminfo import os_is_linux
 from cloudmesh.common.systeminfo import os_is_mac
 from cloudmesh.common.systeminfo import os_is_windows
@@ -88,7 +93,26 @@ class Vpn:
 
     def connect(self):
         if os_is_windows():
-            raise NotImplementedError
+            mycommand = r'C:\Program Files (x86)\Cisco\Cisco AnyConnect Secure Mobility Client\vpncli.exe connect "UVA Anywhere'
+            # mycommand = mycommand.replace("\\", "/")
+            r = pexpect.popen_spawn.PopenSpawn(mycommand)
+            sys.stdout.reconfigure(encoding='utf-8')
+            r.logfile = sys.stdout.buffer
+            #time.sleep(5)
+            #r.sendline('y')
+            status = False
+            result = r.expect([pexpect.TIMEOUT, r"^.*accept.*$", r"^.*Another AnyConnect application.*$", pexpect.EOF])
+            if result == 2:
+                Console.error("Please run in administrative git bash 'net stop vpnagent' and 'net start vpnagent'")
+                return status
+            if result == 1:
+                r.sendline('y')
+                result2 = r.expect([pexpect.TIMEOUT, r"^.*Connected.*$", pexpect.EOF])
+                if result2 == 1:
+                    Console.ok('Successfully connected')
+                    status = True
+                    return status
+
         elif os_is_mac():
 
             connect = readfile(pkg_resources.resource_filename(__name__, 'etc/connect-uva.exp'))
@@ -107,18 +131,28 @@ class Vpn:
 
             # command = f'yes | /opt/cisco/anyconnect/bin/vpn connect "{self.service}"'
             # result = Shell.run(command)
-        self._debug(result)
+        # self._debug(result)
 
     def disconnect(self):
         if os_is_windows():
-            raise NotImplementedError
+            mycommand = r'C:\Program Files (x86)\Cisco\Cisco AnyConnect Secure Mobility Client\vpncli.exe disconnect'
+            # mycommand = mycommand.replace("\\", "/")
+            r = pexpect.popen_spawn.PopenSpawn(mycommand)
+            sys.stdout.reconfigure(encoding='utf-8')
+            r.logfile = sys.stdout.buffer
+            # time.sleep(5)
+            # r.sendline('y')
+
+            result = r.expect([pexpect.TIMEOUT, r"^.*Disconnected.*$", pexpect.EOF])
+            if result == 1:
+                Console.ok('Successfully disconnected')
         elif os_is_mac():
             command = f'/opt/cisco/anyconnect/bin/vpn disconnect "{self.service}"'
             result = Shell.run(command)
         elif os_is_linux():
             command = f'/opt/cisco/anyconnect/bin/vpn disconnect "{self.service}"'
             result = Shell.run(command)
-        self._debug(result)
+        #self._debug(result)
 
 
 
