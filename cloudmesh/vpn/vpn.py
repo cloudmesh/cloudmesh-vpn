@@ -107,6 +107,10 @@ class Vpn:
         return state
 
     def connect(self):
+        if self.enabled:
+            Console.warning("VPN is already activated")
+            return ""
+
         if os_is_windows():
             mycommand = rf'{self.anyconnect} connect "UVA Anywhere'
             # mycommand = mycommand.replace("\\", "/")
@@ -153,11 +157,15 @@ class Vpn:
                 f'--certificate="{home}/.ssh/uva/user.crt" '\
                 'uva-anywhere-1.itc.virginia.edu  2>&1 > /dev/null'
 
-            banner(command)
+            self._debug(command)
+
             try:
                 os.system(command)
             except Exception as e:
+                print ("KKKK")
                 print (e)
+            while not self.enabled:
+                time.sleep(1)
         # self._debug(result)
 
     def disconnect(self):
