@@ -1,3 +1,5 @@
+import os
+
 import pkg_resources
 import requests
 import pexpect
@@ -12,7 +14,7 @@ from cloudmesh.common.systeminfo import os_is_mac
 from cloudmesh.common.systeminfo import os_is_windows
 from cloudmesh.common.util import readfile
 from cloudmesh.common.util import writefile
-
+from cloudmesh.common.util import banner
 
 # mac: /opt/cisco/anyconnect/bin
 
@@ -79,9 +81,8 @@ class Vpn:
             result = Shell.run(command)
             state = "state: Connected" in result
         elif os_is_linux():
-            command = f'echo state | /opt/cisco/anyconnect/bin/vpn -s'
-            result = Shell.run(command)
-            state = "state: Connected" in result
+            result = requests.get("https://ipinfo.io")
+            state = "University of Virginia" in result.json()["org"]
         self._debug(result)
         return state
 
@@ -90,11 +91,18 @@ class Vpn:
         state = False
         if os_is_windows():
             result = requests.get("ipinfo.io")
-            state = "University of Virginia" in result["org"]
-        elif os_is_mac() or os_is_linux():
+            state = "University of Virginia" in result.json()["org"]
+        elif os_is_mac():
             command = self.anyconnect
             result = Shell.run(command)
             state = "virginia.edu" in result
+        elif os_is_linux():
+            result = requests.get("ipinfo.io")
+            state = "University of Virginia" in result.json()["org"]
+        else:
+            result = requests.get("ipinfo.io")
+            state = "University of Virginia" in result.json()["org"]
+
         self._debug(result)
         return state
 
@@ -134,14 +142,22 @@ class Vpn:
             Shell.rm("/tmp/connect-uva.exp")
 
         elif os_is_linux():
+            from cloudmesh.common.sudo import Sudo
 
-            connect = readfile(pkg_resources.resource_filename(__name__, 'etc/connect-uva.exp'))
-            writefile("/tmp/connect-uva.exp", connect)
-            result = Shell.run("expect /tmp/connect-uva.exp")
-            Shell.rm("/tmp/connect-uva.exp")
+            Sudo.password()
+            home = os.environ["HOME"]
+            command = 'sudo openconnect -b -v '\
+                '--protocol=anyconnect '\
+                f'--cafile="{home}/.ssh/uva/usher.cer" '\
+                f'--sslkey="{home}/.ssh/uva/user.key" '\
+                f'--certificate="{home}/.ssh/uva/user.crt" '\
+                'uva-anywhere-1.itc.virginia.edu  2>&1 > /dev/null'
 
-            # command = f'yes | /opt/cisco/anyconnect/bin/vpn connect "{self.service}"'
-            # result = Shell.run(command)
+            banner(command)
+            try:
+                os.system(command)
+            except Exception as e:
+                print (e)
         # self._debug(result)
 
     def disconnect(self):
@@ -161,8 +177,11 @@ class Vpn:
             command = f'/opt/cisco/anyconnect/bin/vpn disconnect "{self.service}"'
             result = Shell.run(command)
         elif os_is_linux():
-            command = f'/opt/cisco/anyconnect/bin/vpn disconnect "{self.service}"'
-            result = Shell.run(command)
+            from cloudmesh.common.sudo import Sudo
+            Sudo.password()
+
+            command = f'sudo pkill -SIGINT openconnect &> /dev/null'
+            result = Shell.run(command )
         #self._debug(result)
 
 
