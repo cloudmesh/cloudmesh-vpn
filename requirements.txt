@@ -8,3 +8,5 @@ cloudmesh-configuration
 #
 #    pip-compile setup.py
 #
+requests
+pexpect

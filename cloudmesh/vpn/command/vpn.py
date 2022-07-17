@@ -45,7 +45,6 @@ class VpnCommand(PluginCommand):
             else:
                 Console.error("failed")
 
-
         elif arguments.status:
             print(vpn.enabled)
 

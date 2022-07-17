@@ -16,6 +16,7 @@ from cloudmesh.common.util import readfile
 from cloudmesh.common.util import writefile
 from cloudmesh.common.util import banner
 
+
 # mac: /opt/cisco/anyconnect/bin
 
 # windows
@@ -58,7 +59,6 @@ class Vpn:
         else:
             raise NotImplementedError("OS is not yet supported for any connect")
 
-
         self.debug = debug
         if service is None or service == "uva":
             self.service = "UVA Anywhere"
@@ -73,6 +73,7 @@ class Vpn:
     @property
     def enabled(self):
         state = False
+        result = ""
         if os_is_windows():
             result = Shell.run("route print").strip()
             state = "Cisco AnyConnect" in result
@@ -117,8 +118,8 @@ class Vpn:
             r = pexpect.popen_spawn.PopenSpawn(mycommand)
             sys.stdout.reconfigure(encoding='utf-8')
             r.logfile = sys.stdout.buffer
-            #time.sleep(5)
-            #r.sendline('y')
+            # time.sleep(5)
+            # r.sendline('y')
             status = False
             result = r.expect([pexpect.TIMEOUT,
                                r"^.*accept.*$",
@@ -131,7 +132,7 @@ class Vpn:
             if result == 1:
                 r.sendline('y')
                 result2 = r.expect()
-                print (result2)
+                print(result2)
                 result2 = r.expect([pexpect.TIMEOUT, "^.*Connected.*$", pexpect.EOF])
                 if result2 == 1:
                     Console.ok('Successfully connected')
@@ -150,20 +151,20 @@ class Vpn:
 
             Sudo.password()
             home = os.environ["HOME"]
-            command = 'sudo openconnect -b -v '\
-                '--protocol=anyconnect '\
-                f'--cafile="{home}/.ssh/uva/usher.cer" '\
-                f'--sslkey="{home}/.ssh/uva/user.key" '\
-                f'--certificate="{home}/.ssh/uva/user.crt" '\
-                'uva-anywhere-1.itc.virginia.edu  2>&1 > /dev/null'
+            command = 'sudo openconnect -b -v ' \
+                      '--protocol=anyconnect ' \
+                      f'--cafile="{home}/.ssh/uva/usher.cer" ' \
+                      f'--sslkey="{home}/.ssh/uva/user.key" ' \
+                      f'--certificate="{home}/.ssh/uva/user.crt" ' \
+                      'uva-anywhere-1.itc.virginia.edu  2>&1 > /dev/null'
 
             self._debug(command)
 
             try:
                 os.system(command)
             except Exception as e:
-                print ("KKKK")
-                print (e)
+                print("KKKK")
+                print(e)
             while not self.enabled:
                 time.sleep(1)
         # self._debug(result)
@@ -189,8 +190,5 @@ class Vpn:
             Sudo.password()
 
             command = f'sudo pkill -SIGINT openconnect &> /dev/null'
-            result = Shell.run(command )
-        #self._debug(result)
-
-
-
+            result = Shell.run(command)
+        # self._debug(result)

@@ -18,12 +18,13 @@
 from setuptools import find_packages, setup
 import io
 
+
 def readfile(filename):
     with io.open(filename, encoding="utf-8") as stream:
         return stream.read().split()
 
 
-#requiers = readfile ('requirements.txt')
+# requiers = readfile ('requirements.txt')
 #
 # add minimum requirements here
 #
@@ -32,6 +33,8 @@ cloudmesh-cmd5
 cloudmesh-sys
 cloudmesh-inventory
 cloudmesh-configuration
+pexpect
+requests
 """.split("\n")
 
 # dependency_links = ['http://github.com/nicolaiarocci/eve.git@develop']
@@ -41,14 +44,11 @@ version = readfile("VERSION")[0].strip()
 with open('README.md') as f:
     long_description = f.read()
 
-
-
 NAME = "cloudmesh-vpn"
 DESCRIPTION = "A command called vpn and foo for the cloudmesh shell"
 AUTHOR = "Gregor von Laszewski"
 AUTHOR_EMAIL = "laszewski@gmail.com"
 URL = "https://github.com/cloudmesh/cloudmesh-vpn"
-
 
 setup(
     name=NAME,
