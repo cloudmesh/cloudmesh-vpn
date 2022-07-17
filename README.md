@@ -1,15 +1,29 @@
-Documentation
-=============
+# cms vpn
+
+## Linux
+
+```
+ls ~/.ssh/uva/
+user.crt  user.key  user.p12  usher.cer  usher.crt
+```
+
+Now I need to develop a commandline tool with open connect as it is already installed on ubuntu.
+
+So I can say what you see next. HOwever I still get an error and the connection hangs. I could possibly put that in & but the dev seems wrong. DO you know how to avoid this?
 
 
-[![image](https://img.shields.io/travis/TankerHQ/cloudmesh-bar.svg?branch=main)](https://travis-ci.org/TankerHQ/cloudmesn-bar)
+```
+$sudo openconnect  --protocol=anyconnect --cafile="$HOME/.ssh/uva/usher.cer" --sslkey="$HOME/.ssh/uva/user.key" --certificate="$HOME/.ssh/uva/user.crt" --user=UVAUSER uva-anywhere-1.itc.virginia.edu
+```
 
-[![image](https://img.shields.io/pypi/pyversions/cloudmesh-bar.svg)](https://pypi.org/project/cloudmesh-bar)
+we can leave of --user
 
-[![image](https://img.shields.io/pypi/v/cloudmesh-bar.svg)](https://pypi.org/project/cloudmesh-bar/)
+```
+$sudo openconnect  --protocol=anyconnect --cafile="$HOME/.ssh/uva/usher.cer" --sslkey="$HOME/.ssh/uva/user.key" --certificate="$HOME/.ssh/uva/user.crt" uva-anywhere-1.itc.virginia.edu
+```
 
-[![image](https://img.shields.io/github/license/TankerHQ/python-cloudmesh-bar.svg)](https://github.com/TankerHQ/python-cloudmesh-bar/blob/main/LICENSE)
+kill:
 
-see cloudmesh.cmd5
-
-* https://github.com/cloudmesh/cloudmesh.cmd5
+```
+sudo kill -9 `pgrep openconnect`
+```
