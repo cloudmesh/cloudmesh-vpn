@@ -131,8 +131,6 @@ class Vpn:
                 return status
             if result == 1:
                 r.sendline('y')
-                result2 = r.expect()
-                print(result2)
                 result2 = r.expect([pexpect.TIMEOUT, "^.*Connected.*$", pexpect.EOF])
                 if result2 == 1:
                     Console.ok('Successfully connected')
@@ -171,7 +169,7 @@ class Vpn:
 
     def disconnect(self):
         if os_is_windows():
-            mycommand = r'C:\Program Files (x86)\Cisco\Cisco AnyConnect Secure Mobility Client\vpncli.exe disconnect'
+            mycommand = fr'C:\Program Files (x86)\Cisco\Cisco AnyConnect Secure Mobility Client\vpncli.exe disconnect "{self.service}"'
             # mycommand = mycommand.replace("\\", "/")
             r = pexpect.popen_spawn.PopenSpawn(mycommand)
             sys.stdout.reconfigure(encoding='utf-8')
