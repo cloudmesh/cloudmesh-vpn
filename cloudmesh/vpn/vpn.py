@@ -192,3 +192,7 @@ class Vpn:
             command = f'sudo pkill -SIGINT openconnect &> /dev/null'
             result = Shell.run(command)
         # self._debug(result)
+
+    def info(self):
+        r = Shell.run('curl -s ipinfo.io')
+        return r

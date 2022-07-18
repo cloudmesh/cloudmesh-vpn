@@ -16,6 +16,7 @@ class VpnCommand(PluginCommand):
                 vpn connect [--service=SERVICE] [-v]
                 vpn disconnect [-v]
                 vpn status [-v]
+                vpn info
 
           This command manages the von connection
 
@@ -47,6 +48,9 @@ class VpnCommand(PluginCommand):
 
         elif arguments.status:
             print(vpn.enabled)
+
+        elif arguments.info:
+            print(vpn.info())
 
         # elif arguments.install:
         #     found = Shell.which("openconnect")
