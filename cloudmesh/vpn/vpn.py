@@ -5,6 +5,7 @@ import requests
 import pexpect
 import time
 import sys
+import ctypes
 from pexpect.popen_spawn import PopenSpawn
 
 from cloudmesh.common.Shell import Shell
@@ -113,29 +114,40 @@ class Vpn:
             return ""
 
         if os_is_windows():
+            if ctypes.windll.shell32.IsUserAnAdmin() == 0:
+                Console.error("Please run as admin")
+                return ""
+
             mycommand = rf'{self.anyconnect} connect "UVA Anywhere'
-            # mycommand = mycommand.replace("\\", "/")
-            r = pexpect.popen_spawn.PopenSpawn(mycommand)
-            sys.stdout.reconfigure(encoding='utf-8')
-            r.logfile = sys.stdout.buffer
-            # time.sleep(5)
-            # r.sendline('y')
-            status = False
-            result = r.expect([pexpect.TIMEOUT,
-                               r"^.*accept.*$",
-                               r"^.*Another AnyConnect application.*$",
-                               pexpect.EOF])
-            if result == 2:
-                Console.error("Please run in administrative git bash "
-                              "'net stop vpnagent' and 'net start vpnagent'")
-                return status
-            if result == 1:
-                r.sendline('y')
-                result2 = r.expect([pexpect.TIMEOUT, "^.*Connected.*$", pexpect.EOF])
-                if result2 == 1:
-                    Console.ok('Successfully connected')
-                    status = True
-                    return status
+            service_started = False
+            while not service_started:
+                r = pexpect.popen_spawn.PopenSpawn(mycommand)
+                r.timeout = 3
+                sys.stdout.reconfigure(encoding='utf-8')
+                r.logfile = sys.stdout.buffer
+                result = r.expect([pexpect.TIMEOUT,
+                                   r"^.*accept.*$",
+                                   r"^.*Another AnyConnect application.*$",
+                                   r"^.*The VPN Service is not available.*$",
+                                   pexpect.EOF])
+                if result in [0, 2, 3]:
+                    Console.warning('Restarting vpnagent to avoid conflict')
+                    try:
+                        r = Shell.run('net stop vpnagent')
+                    except:
+                        pass
+                    try:
+                        r = Shell.run('net start vpnagent')
+                    except:
+                        pass
+
+                if result == 1:
+                    service_started = True
+                    r.sendline('y')
+                    result2 = r.expect([pexpect.TIMEOUT, "^.*Connected.*$", pexpect.EOF])
+                    if result2 == 1:
+                        Console.ok('Successfully connected')
+                        return True
 
         elif os_is_mac():
 
@@ -168,6 +180,10 @@ class Vpn:
         # self._debug(result)
 
     def disconnect(self):
+        if not self.enabled:
+            Console.warning("VPN is already deactivated")
+            return ""
+
         if os_is_windows():
             mycommand = fr'C:\Program Files (x86)\Cisco\Cisco AnyConnect Secure Mobility Client\vpncli.exe disconnect "{self.service}"'
             # mycommand = mycommand.replace("\\", "/")
