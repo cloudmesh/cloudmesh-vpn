@@ -1,5 +1,28 @@
 # cms vpn
 
+## Windows
+
+This requires installation of the Cisco AnyConnect
+Secure Mobility Client located at <https://in.virginia.edu/vpn>.
+
+To connect to the UVA Anywhere VPN, run
+
+```bash
+cms vpn connect
+```
+
+To disconnect from UVA Anywhere, run
+
+```bash
+cms vpn disconnect
+```
+
+To see info regarding your connection, run
+
+```bash
+cms vpn info
+```
+
 ## Linux
 
 ### Requirements
