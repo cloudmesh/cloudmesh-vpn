@@ -118,7 +118,7 @@ class Vpn:
                 Console.error("Please run as admin")
                 return ""
 
-            mycommand = rf'{self.anyconnect} connect "UVA Anywhere'
+            mycommand = rf'{self.anyconnect} connect "UVA Anywhere"'
             service_started = False
             while not service_started:
                 r = pexpect.popen_spawn.PopenSpawn(mycommand)
@@ -151,10 +151,30 @@ class Vpn:
 
         elif os_is_mac():
 
-            connect = readfile(pkg_resources.resource_filename(__name__, 'etc/connect-uva.exp'))
-            writefile("/tmp/connect-uva.exp", connect)
-            result = Shell.run("expect /tmp/connect-uva.exp")
-            Shell.rm("/tmp/connect-uva.exp")
+            mycommand = rf'{self.anyconnect} connect "UVA Anywhere"'
+            service_started = False
+            while not service_started:
+                r = pexpect.spawn(mycommand)
+                r.timeout = 3
+                sys.stdout.reconfigure(encoding='utf-8')
+                r.logfile = sys.stdout.buffer
+                result = r.expect([pexpect.TIMEOUT,
+                                   r"^.*accept.*$",
+                                   r"^.*Another AnyConnect application.*$",
+                                   r"^.*The VPN Service is not available.*$",
+                                   pexpect.EOF])
+                if result in [0, 2, 3]:
+                    Console.error('Please kill the AnyConnect windows.')
+                    return False
+
+                if result == 1:
+                    service_started = True
+                    r.sendline('y')
+                    result2 = r.expect(
+                        [pexpect.TIMEOUT, "^.*Connected.*$", pexpect.EOF])
+                    if result2 == 1:
+                        Console.ok('Successfully connected')
+                        return True
 
         elif os_is_linux():
             from cloudmesh.common.sudo import Sudo
