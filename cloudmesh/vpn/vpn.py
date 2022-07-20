@@ -71,8 +71,7 @@ class Vpn:
         if self.debug:
             print(msg)
 
-    @property
-    def enabled(self):
+    def enabled(self=None):
         state = False
         result = ""
         if os_is_windows():
@@ -85,7 +84,8 @@ class Vpn:
         elif os_is_linux():
             result = requests.get("https://ipinfo.io")
             state = "University of Virginia" in result.json()["org"]
-        self._debug(result)
+        if self:
+            Vpn._debug(self, result)
         return state
 
     @property
@@ -109,7 +109,7 @@ class Vpn:
         return state
 
     def connect(self):
-        if self.enabled:
+        if self.enabled():
             Console.warning("VPN is already activated")
             return ""
 
@@ -195,12 +195,12 @@ class Vpn:
             except Exception as e:
                 print("KKKK")
                 print(e)
-            while not self.enabled:
+            while not self.enabled():
                 time.sleep(1)
         # self._debug(result)
 
     def disconnect(self):
-        if not self.enabled:
+        if not self.enabled():
             Console.warning("VPN is already deactivated")
             return ""
 
