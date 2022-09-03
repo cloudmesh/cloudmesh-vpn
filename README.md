@@ -123,7 +123,7 @@ To diconnect
 $ cms vpn disconnect
 ```
 
-## Acknowledgements
+## Acknowledgments
 
 This work was in part funded by the NSF
 CyberTraining: CIC: CyberTraining for Students and Technologies
