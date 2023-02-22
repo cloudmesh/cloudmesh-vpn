@@ -1,11 +1,9 @@
 import os
 
-import pkg_resources
 import requests
 import pexpect
 import time
 import sys
-import ctypes
 from pexpect.popen_spawn import PopenSpawn
 
 from cloudmesh.common.Shell import Shell
@@ -13,10 +11,9 @@ from cloudmesh.common.Shell import Console
 from cloudmesh.common.systeminfo import os_is_linux
 from cloudmesh.common.systeminfo import os_is_mac
 from cloudmesh.common.systeminfo import os_is_windows
-from cloudmesh.common.util import readfile
-from cloudmesh.common.util import writefile
-from cloudmesh.common.util import banner
 
+if os_is_windows():
+    import pyuac
 
 # mac: /opt/cisco/anyconnect/bin
 
@@ -58,7 +55,7 @@ class Vpn:
         elif os_is_linux():
             self.anyconnect = "/opt/cisco/anyconnect/bin/vpn"
         else:
-            raise NotImplementedError("OS is not yet supported for any connect")
+            raise NotImplementedError("OS is not yet supported for anyconnect")
 
         self.debug = debug
         if service is None or service == "uva":
@@ -114,9 +111,8 @@ class Vpn:
             return ""
 
         if os_is_windows():
-            if ctypes.windll.shell32.IsUserAnAdmin() == 0:
-                Console.error("Please run as admin")
-                return ""
+            if not pyuac.isUserAdmin():
+                pyuac.runAsAdmin()
 
             mycommand = rf'{self.anyconnect} connect "UVA Anywhere"'
             service_started = False
