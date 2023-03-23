@@ -136,6 +136,10 @@ class Vpn:
                         r = Shell.run('net start vpnagent')
                     except:
                         pass
+                    try:
+                        r = os.system('taskkill /im vpnui.exe /F')
+                    except:
+                        pass
 
                 if result == 1:
                     service_started = True
