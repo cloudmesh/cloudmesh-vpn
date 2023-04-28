@@ -49,7 +49,7 @@ class Vpn:
     def __init__(self, service=None, debug=False):
 
         if os_is_windows():
-            self.anyconnect = r'C:\Program Files (x86)\Cisco\Cisco AnyConnect Secure Mobility Client\vpncli.exe'
+            self.anyconnect = r'C:\Program Files (x86)\Cisco\Cisco Secure Client\vpncli.exe'
         elif os_is_mac():
             self.anyconnect = "/opt/cisco/anyconnect/bin/vpn"
         elif os_is_linux():
@@ -123,7 +123,7 @@ class Vpn:
                 r.logfile = sys.stdout.buffer
                 result = r.expect([pexpect.TIMEOUT,
                                    r"^.*accept.*$",
-                                   r"^.*Another AnyConnect application.*$",
+                                   r"^.*Another Cisco Secure Client.*$",
                                    r"^.*The VPN Service is not available.*$",
                                    pexpect.EOF])
                 if result in [0, 2, 3]:
@@ -137,7 +137,7 @@ class Vpn:
                     except:
                         pass
                     try:
-                        r = os.system('taskkill /im vpnui.exe /F')
+                        r = os.system('taskkill /im vpnagent.exe /F')
                     except:
                         pass
 
@@ -205,7 +205,7 @@ class Vpn:
             return ""
 
         if os_is_windows():
-            mycommand = fr'C:\Program Files (x86)\Cisco\Cisco AnyConnect Secure Mobility Client\vpncli.exe disconnect "{self.service}"'
+            mycommand = fr'{self.anyconnect} disconnect "{self.service}"'
             # mycommand = mycommand.replace("\\", "/")
             r = pexpect.popen_spawn.PopenSpawn(mycommand)
             sys.stdout.reconfigure(encoding='utf-8')
