@@ -124,20 +124,28 @@ class Vpn:
                 result = r.expect([pexpect.TIMEOUT,
                                    r"^.*accept.*$",
                                    r"^.*Another Cisco Secure Client.*$",
-                                   r"^.*The VPN Service is not available.*$",
+                                   r"^.*VPN service is unavailable.*$",
                                    pexpect.EOF])
                 if result in [0, 2, 3]:
                     Console.warning('Restarting vpnagent to avoid conflict')
-                    try:
-                        r = Shell.run('net stop vpnagent')
-                    except:
-                        pass
-                    try:
-                        r = Shell.run('net start vpnagent')
-                    except:
-                        pass
+
                     try:
                         r = os.system('taskkill /im vpnagent.exe /F')
+                    except:
+                        pass
+
+                    try:
+                        r = Shell.run('net stop csc_vpnagent')
+                    except:
+                        pass
+
+                    try:
+                        r = Shell.run('net start csc_vpnagent')
+                    except:
+                        pass
+
+                    try:
+                        r = os.system('taskkill /im csc_ui.exe /F')
                     except:
                         pass
 
