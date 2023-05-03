@@ -2,8 +2,8 @@
 
 ## Windows
 
-This requires installation of the Cisco AnyConnect
-Secure Mobility Client located at <https://in.virginia.edu/vpn>.
+This requires installation of the Cisco
+Secure Client located at <https://in.virginia.edu/vpn>.
 
 To connect to the UVA Anywhere VPN, run
 
@@ -27,7 +27,7 @@ cms vpn info
 
 ### Requirements
 
-On Linux we use the comamnd `openconnect`. To check if it is available please use
+On Linux we use the command `openconnect`. To check if it is available please use
 
 ```bash
 $ which openconnect
@@ -56,7 +56,7 @@ At UVA you find the certificate and other documentation at
 
 * <https://www.rc.virginia.edu/userinfo/linux/uva-anywhere-vpn-linux/>
 
-we place all certifcates into ~/.ssh/uva
+we place all certificates into ~/.ssh/uva
 
 ```
 mkdir -p You will receive a file ending in .p12. In this example we will assume it is named mst3k.p12.
@@ -70,12 +70,12 @@ To get a certificate for your device, go to
 
 Fill it out and get the key. You will receive a 
 file ending in .p12. In this example we will assume it 
-is named mst3k.p12 and palce it into ~/.ssh/uva/user.p12
+is named mst3k.p12 and place it into ~/.ssh/uva/user.p12
 
 It is important for us to rename this key to user.p12
-so we have a simplere way of identifying it and writing this documentation.
+so we have a simpler way of identifying it and writing this documentation.
 
-Now converte the keys and certificates with the following commands
+Now convert the keys and certificates with the following commands
 
 ```bash
 cd ~/.ssh/uva
@@ -117,7 +117,7 @@ $ cms vpn connect
 ```
 
 
-To diconnect
+To disconnect
 
 ```bash
 $ cms vpn disconnect
@@ -127,4 +127,4 @@ $ cms vpn disconnect
 
 This work was in part funded by the NSF
 CyberTraining: CIC: CyberTraining for Students and Technologies
-from Generation Z with the awadrd numbers 1829704 and 2200409.
+from Generation Z with the award numbers 1829704 and 2200409.
