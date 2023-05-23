@@ -13,7 +13,7 @@ class VpnCommand(PluginCommand):
         ::
 
           Usage:
-                vpn connect [--service=SERVICE] [-v] [--timeout=TIMEOUT]
+                vpn connect [--service=SERVICE] [--timeout=TIMEOUT] [-v]
                 vpn disconnect [-v]
                 vpn status [-v]
                 vpn info
@@ -22,6 +22,27 @@ class VpnCommand(PluginCommand):
 
           Options:
               -v      debug [default: False]
+
+          Description:
+            vpn info
+               prints out information about your current location as
+               obtained via the vpn connection.
+
+            vpn status
+                prints out "True" if the vpn is connected
+                and "False" if it is not.
+
+            vpn disconnect
+                disconnects from the VPN.
+
+            vpn connect
+                connects to the UVA Anywhere VPN.
+
+                If the VPN is already connected a warning is shown.
+
+                You can connect to other VPNs while specifying their names
+                as given to you by the VPN provider with e service option.
+
 
         """
 
