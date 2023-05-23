@@ -15,6 +15,7 @@ from cloudmesh.common.systeminfo import os_is_windows
 if os_is_windows():
     import pyuac
 
+# mac /opt/cisco/secureclient/bin/vpn
 # mac: /opt/cisco/anyconnect/bin
 
 # windows
@@ -51,7 +52,14 @@ class Vpn:
         if os_is_windows():
             self.anyconnect = r'C:\Program Files (x86)\Cisco\Cisco Secure Client\vpncli.exe'
         elif os_is_mac():
-            self.anyconnect = "/opt/cisco/anyconnect/bin/vpn"
+            self.anyconnect = None
+            for command in ["/opt/cisco/anyconnect/bin/vpn",
+                            "/opt/cisco/secureclient/bin/vpn"]:
+                if os.path.isfile(command):
+                    self.anyconnect = command
+                    break;
+            if self.anyconnect is None:
+                raise NotImplementedError("vpn cCLI not found")
         elif os_is_linux():
             self.anyconnect = "/opt/cisco/anyconnect/bin/vpn"
         else:
@@ -75,7 +83,7 @@ class Vpn:
             result = Shell.run("route print").strip()
             state = "Cisco AnyConnect" in result
         elif os_is_mac():
-            command = f'echo state | /opt/cisco/anyconnect/bin/vpn -s'
+            command = f'echo state | {self.anyconnect} -s'
             result = Shell.run(command)
             state = "state: Connected" in result
         elif os_is_linux():
@@ -225,7 +233,7 @@ class Vpn:
             if result == 1:
                 Console.ok('Successfully disconnected')
         elif os_is_mac():
-            command = f'/opt/cisco/anyconnect/bin/vpn disconnect "{self.service}"'
+            command = f'{self.anyconnect} disconnect "{self.service}"'
             result = Shell.run(command)
         elif os_is_linux():
             from cloudmesh.common.sudo import Sudo
