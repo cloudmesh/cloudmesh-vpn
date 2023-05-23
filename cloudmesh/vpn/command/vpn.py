@@ -13,7 +13,7 @@ class VpnCommand(PluginCommand):
         ::
 
           Usage:
-                vpn connect [--service=SERVICE] [-v]
+                vpn connect [--service=SERVICE] [-v] [--timeout=TIMEOUT]
                 vpn disconnect [-v]
                 vpn status [-v]
                 vpn info
@@ -25,10 +25,12 @@ class VpnCommand(PluginCommand):
 
         """
 
-        map_parameters(arguments, "service")
+        map_parameters(arguments, "service", "timeout")
 
         from cloudmesh.vpn.vpn import Vpn
-        vpn = Vpn(arguments.service, debug=arguments["-v"])
+        vpn = Vpn(arguments.service,
+                  timeout=arguments.timeout,
+                  debug=arguments["-v"])
 
         if arguments.connect:
             Console.ok("Connecting ... ")

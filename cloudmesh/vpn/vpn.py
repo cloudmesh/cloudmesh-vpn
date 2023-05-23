@@ -47,7 +47,13 @@ if os_is_windows():
 
 class Vpn:
 
-    def __init__(self, service=None, debug=False):
+    def __init__(self,
+                 service=None,
+                 timeout=None,
+                 debug=False):
+
+        if timeout is None:
+            self.timeout = 60
 
         if os_is_windows():
             self.anyconnect = r'C:\Program Files (x86)\Cisco\Cisco Secure Client\vpncli.exe'
@@ -171,7 +177,7 @@ class Vpn:
             service_started = False
             while not service_started:
                 r = pexpect.spawn(mycommand)
-                r.timeout = 3
+                r.timeout = self.timeout
                 sys.stdout.reconfigure(encoding='utf-8')
                 r.logfile = sys.stdout.buffer
                 result = r.expect([pexpect.TIMEOUT,
