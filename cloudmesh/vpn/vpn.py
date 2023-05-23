@@ -54,6 +54,8 @@ class Vpn:
 
         if timeout is None:
             self.timeout = 60
+        else:
+            self.timeout = timeout
 
         if os_is_windows():
             self.anyconnect = r'C:\Program Files (x86)\Cisco\Cisco Secure Client\vpncli.exe'
