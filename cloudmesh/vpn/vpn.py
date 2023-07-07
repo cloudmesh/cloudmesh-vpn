@@ -180,7 +180,7 @@ class Vpn:
                     # 0x1000 keeps it topmost
                     ctypes.windll.user32.MessageBoxW(0, "Your UVA certificate has expired!\nRedirecting you to the appropriate UVA webpage...",
                                                      "Oops", 0x1000)
-                    Shell.browser('https://in.virginia.edu/vpn')
+                    Shell.browser('https://in.virginia.edu/installcert')
                     return False
 
         elif os_is_mac():
@@ -221,7 +221,7 @@ class Vpn:
 
                     subprocess.call("osascript -e '{}'".format(applescript),
                                     shell=True)
-                    Shell.browser('https://in.virginia.edu/vpn')
+                    Shell.browser('https://in.virginia.edu/installcert')
                     return False
 
         elif os_is_linux():
