@@ -5,6 +5,7 @@ import pexpect
 import time
 import sys
 from pexpect.popen_spawn import PopenSpawn
+import subprocess
 
 from cloudmesh.common.Shell import Shell
 from cloudmesh.common.Shell import Console
@@ -141,6 +142,7 @@ class Vpn:
                                    r"^.*accept.*$",
                                    r"^.*Another Cisco Secure Client.*$",
                                    r"^.*VPN service is unavailable.*$",
+                                   r"^.*No valid certificate.*$",
                                    pexpect.EOF])
                 if result in [0, 2, 3]:
                     Console.warning('Restarting vpnagent to avoid conflict')
@@ -173,6 +175,14 @@ class Vpn:
                         Console.ok('Successfully connected')
                         return True
 
+                elif result == 4:
+                    import ctypes  # An included library with Python install.
+                    # 0x1000 keeps it topmost
+                    ctypes.windll.user32.MessageBoxW(0, "Your UVA certificate has expired!\nRedirecting you to the appropriate UVA webpage...",
+                                                     "Oops", 0x1000)
+                    Shell.browser('https://in.virginia.edu/vpn')
+                    return False
+
         elif os_is_mac():
 
             mycommand = rf'{self.anyconnect} connect "UVA Anywhere"'
@@ -186,6 +196,7 @@ class Vpn:
                                    r"^.*accept.*$",
                                    r"^.*Another AnyConnect application.*$",
                                    r"^.*The VPN Service is not available.*$",
+                                   r"^.*No valid certificate.*$",
                                    pexpect.EOF])
                 if result in [0, 2, 3]:
                     Console.error('Please kill the AnyConnect windows.')
@@ -199,6 +210,19 @@ class Vpn:
                     if result2 == 1:
                         Console.ok('Successfully connected')
                         return True
+
+                elif result == 4:
+                    applescript = """
+                    display dialog "Your UVA certificate has expired!\nRedirecting you to the appropriate UVA webpage..." ¬
+                    with title "Oops" ¬
+                    with icon caution ¬
+                    buttons {"OK"}
+                    """
+
+                    subprocess.call("osascript -e '{}'".format(applescript),
+                                    shell=True)
+                    Shell.browser('https://in.virginia.edu/vpn')
+                    return False
 
         elif os_is_linux():
             from cloudmesh.common.sudo import Sudo
