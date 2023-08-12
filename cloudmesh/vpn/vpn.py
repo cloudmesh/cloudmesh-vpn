@@ -285,10 +285,14 @@ class Vpn:
             command = f'{self.anyconnect} disconnect "{self.service}"'
             result = Shell.run(command)
         elif os_is_linux():
-            from cloudmesh.common.sudo import Sudo
-            Sudo.password()
+            if not self.is_docker():
+                from cloudmesh.common.sudo import Sudo
+                Sudo.password()
 
-            command = f'sudo pkill -SIGINT openconnect &> /dev/null'
+                command = f'sudo pkill -SIGINT openconnect &> /dev/null'
+            else:
+                command = f'pkill -SIGINT openconnect &> /dev/null'
+
             result = Shell.run(command)
         # self._debug(result)
 
