@@ -248,9 +248,9 @@ class Vpn:
             else:
                 command = 'openconnect -b -v ' \
                       '--protocol=anyconnect ' \
-                      f'--cafile="{home}/.ssh/uva/usher.cer" ' \
-                      f'--sslkey="{home}/.ssh/uva/user.key" ' \
-                      f'--certificate="{home}/.ssh/uva/user.crt" ' \
+                      f'--cafile="/root/.ssh/uva/usher.cer" ' \
+                      f'--sslkey="/root/.ssh/uva/user.key" ' \
+                      f'--certificate="/root/.ssh/uva/user.crt" ' \
                       'uva-anywhere-1.itc.virginia.edu  2>&1 > /dev/null'
                 
             self._debug(command)
