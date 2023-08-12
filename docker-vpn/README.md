@@ -3,10 +3,10 @@ Docker is necessary.
 # UFL
 
 ```bash
-make build
-make shell
+make build VPN=ufl
+make shell VPN=ufl
 # one more time
-make shell
+make shell VPN=ufl
 python3 setup.py
 # mkdir /app/remote_mount
 # sshfs me@mycoolschool.edu:/home/me /app/remote_mount
@@ -32,10 +32,10 @@ so download it through web browser.
 # using windows downloads path... change accordingly if other os...
 cp ~/Downloads/*.p12 user.p12
 cp ~/Downloads/usher.cer .
-make build
-make shell
+make build VPN=uva
+make shell VPN=uva
 # one more time
-make shell
+make shell VPN=uva
 mkdir -p ~/.ssh/uva/
 openssl pkcs12 -in user.p12 -nocerts -nodes -out ~/.ssh/uva/user.key
 openssl pkcs12 -in user.p12 -clcerts -nokeys -out ~/.ssh/uva/user.crt
@@ -46,3 +46,8 @@ cms vpn connect
 # error may happen, but you are likely connected
 curl icanhazip.com
 ```
+
+# Dual vpn
+
+It is now possible to connect to two HPC, one in each terminal, by using
+each vpn's `make shell`
