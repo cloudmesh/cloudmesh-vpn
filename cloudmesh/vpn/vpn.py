@@ -81,6 +81,13 @@ class Vpn:
         else:
             self.service = service
 
+    def is_docker(self):
+        path = '/proc/self/cgroup'
+        return (
+            os.path.exists('/.dockerenv') or
+            os.path.isfile(path) and any('docker' in line for line in open(path))
+        )
+
     def _debug(self, msg):
         if self.debug:
             print(msg)
@@ -225,17 +232,27 @@ class Vpn:
                     return False
 
         elif os_is_linux():
-            from cloudmesh.common.sudo import Sudo
 
-            Sudo.password()
             home = os.environ["HOME"]
-            command = 'sudo openconnect -b -v ' \
+
+            if not self.is_docker():
+                from cloudmesh.common.sudo import Sudo
+
+                Sudo.password()
+                command = 'sudo openconnect -b -v ' \
                       '--protocol=anyconnect ' \
                       f'--cafile="{home}/.ssh/uva/usher.cer" ' \
                       f'--sslkey="{home}/.ssh/uva/user.key" ' \
                       f'--certificate="{home}/.ssh/uva/user.crt" ' \
                       'uva-anywhere-1.itc.virginia.edu  2>&1 > /dev/null'
-
+            else:
+                command = 'openconnect -b -v ' \
+                      '--protocol=anyconnect ' \
+                      f'--cafile="{home}/.ssh/uva/usher.cer" ' \
+                      f'--sslkey="{home}/.ssh/uva/user.key" ' \
+                      f'--certificate="{home}/.ssh/uva/user.crt" ' \
+                      'uva-anywhere-1.itc.virginia.edu  2>&1 > /dev/null'
+                
             self._debug(command)
 
             try:
