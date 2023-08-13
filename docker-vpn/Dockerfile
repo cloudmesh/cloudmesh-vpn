@@ -34,6 +34,11 @@ RUN apt-get update && apt-get install -y software-properties-common && \
     apt-key adv --keyserver keyserver.ubuntu.com --recv-keys EB3E94ADBE1229CF && \
     apt-get update && apt-get install -y code
 
+ENV DONT_PROMPT_WSL_INSTALL=y
+
+RUN code --no-sandbox --user-data-dir=/app/vscode-1 --install-extension ms-vscode-remote.remote-ssh
+RUN code --no-sandbox --user-data-dir=/app/vscode-2 --install-extension ms-vscode-remote.remote-ssh
+
 
 # Set the default command to run when the container starts
 CMD ["bash"]

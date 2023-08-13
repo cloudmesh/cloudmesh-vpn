@@ -97,3 +97,4 @@ ENV/
 *.p12
 *.cer
 **/vscode*
+*.out
