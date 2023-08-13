@@ -3,3 +3,4 @@ pexpect
 # keyrings.alt
 # dbus-python==1.2.18
 cloudmesh-installer
+vpn-slice

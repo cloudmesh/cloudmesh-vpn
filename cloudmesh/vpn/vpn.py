@@ -251,7 +251,9 @@ class Vpn:
                       f'--cafile="/root/.ssh/uva/usher.cer" ' \
                       f'--sslkey="/root/.ssh/uva/user.key" ' \
                       f'--certificate="/root/.ssh/uva/user.crt" ' \
-                      'uva-anywhere-1.itc.virginia.edu  2>&1 > /dev/null'
+                      f'-m 1290 ' \
+                       'uva-anywhere-1.itc.virginia.edu ' \
+                       '-s "vpn-slice --prevent-idle-timeout rivanna.hpc.virginia.edu"'
                 
             self._debug(command)
 

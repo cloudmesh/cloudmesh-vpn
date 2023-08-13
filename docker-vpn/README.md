@@ -36,7 +36,6 @@ make build VPN=uva
 make shell VPN=uva
 # one more time
 make shell VPN=uva
-mkdir -p ~/.ssh/uva/
 openssl pkcs12 -in user.p12 -nocerts -nodes -out ~/.ssh/uva/user.key
 openssl pkcs12 -in user.p12 -clcerts -nokeys -out ~/.ssh/uva/user.crt
 openssl x509 -inform DER -in usher.cer -out ~/.ssh/uva/usher.crt
@@ -51,3 +50,40 @@ curl icanhazip.com
 
 It is now possible to connect to two HPC, one in each terminal, by using
 each vpn's `make shell`
+
+# Use IDE
+
+(windows only)
+download vcxsrv. you need chocolatey.
+
+```bash
+choco install vcxsrv -y
+```
+
+(mac only)
+download xquartz. you need homebrew.
+```bash
+brew install --cask xquartz
+```
+
+windows:
+run vcxsrv by typing xlaunch in windows start
+and make sure to check `disable access control`
+(use defaults for all other options)
+
+In Git Bash, while not inside any docker environment,
+run `echo $(route.exe print | grep 0.0.0.0 | head -1 | awk '{print $4}'):0.0`
+then copy that value. 
+
+go to the docker container with corresponding `make shell`
+command above. then `export DISPLAY=theValueYouJustWroteDown`
+
+To start visual studio code,
+
+```bash
+export DONT_PROMPT_WSL_INSTALL=y
+code --no-sandbox --user-data-dir=/app/vscode-1
+# and then in the other docker...
+code --no-sandbox --user-data-dir=/app/vscode-2
+```
+
