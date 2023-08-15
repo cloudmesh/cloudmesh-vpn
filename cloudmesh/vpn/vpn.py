@@ -257,7 +257,8 @@ class Vpn:
                       f'--certificate="/root/.ssh/uva/user.crt" ' \
                       f'-m 1290 ' \
                        'uva-anywhere-1.itc.virginia.edu ' \
-                       '--script=\'vpn-slice --prevent-idle-timeout rivanna.hpc.virginia.edu\''
+                       '--script=\'vpn-slice --prevent-idle-timeout rivanna.hpc.virginia.edu ' \
+                       'biihead1.bii.virginia.edu biihead2.bii.virginia.edu\''
               
             self._debug(command)
     
