@@ -105,6 +105,10 @@ class Vpn:
         elif os_is_linux():
             result = requests.get("https://ipinfo.io")
             state = "University of Virginia" in result.json()["org"]
+            if (state is False) and (self.is_docker()):
+                if 'openconnect' in Shell.run('ps -u'):
+                    state = True
+
         if self:
             Vpn._debug(self, result)
         return state
@@ -246,16 +250,15 @@ class Vpn:
                       f'--certificate="{home}/.ssh/uva/user.crt" ' \
                       'uva-anywhere-1.itc.virginia.edu  2>&1 > /dev/null'
             else:
-                command = 'nohup openconnect -b -v ' \
+                command = 'openconnect -b -v ' \
                       '--protocol=anyconnect ' \
                       f'--cafile="/root/.ssh/uva/usher.cer" ' \
                       f'--sslkey="/root/.ssh/uva/user.key" ' \
                       f'--certificate="/root/.ssh/uva/user.crt" ' \
                       f'-m 1290 ' \
                        'uva-anywhere-1.itc.virginia.edu ' \
-                       '--script=\'vpn-slice --prevent-idle-timeout rivanna.hpc.virginia.edu\' >/dev/null 2>&1 &'
-            
-            print(command)            
+                       '--script=\'vpn-slice --prevent-idle-timeout rivanna.hpc.virginia.edu\''
+              
             self._debug(command)
     
             try:
@@ -295,6 +298,8 @@ class Vpn:
                 command = f'sudo pkill -SIGINT openconnect &> /dev/null'
             else:
                 command = f'pkill -SIGINT openconnect &> /dev/null'
+                result = Shell.run(command)
+                command = f'pkill -SIGINT vpn-slice &> /dev/null'
 
             result = Shell.run(command)
         # self._debug(result)
