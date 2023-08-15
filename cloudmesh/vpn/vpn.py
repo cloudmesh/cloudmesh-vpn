@@ -254,9 +254,10 @@ class Vpn:
                       f'-m 1290 ' \
                        'uva-anywhere-1.itc.virginia.edu ' \
                        '--script=\'vpn-slice --prevent-idle-timeout rivanna.hpc.virginia.edu\''
-                
+            
+            print(command)            
             self._debug(command)
-
+    
             try:
                 os.system(command)
             except Exception as e:
