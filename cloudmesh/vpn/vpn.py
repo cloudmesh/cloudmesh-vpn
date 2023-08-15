@@ -246,7 +246,7 @@ class Vpn:
                       f'--certificate="{home}/.ssh/uva/user.crt" ' \
                       'uva-anywhere-1.itc.virginia.edu  2>&1 > /dev/null'
             else:
-                command = 'openconnect -b -v ' \
+                command = 'nohup openconnect -b -v ' \
                       '--protocol=anyconnect ' \
                       f'--cafile="/root/.ssh/uva/usher.cer" ' \
                       f'--sslkey="/root/.ssh/uva/user.key" ' \
