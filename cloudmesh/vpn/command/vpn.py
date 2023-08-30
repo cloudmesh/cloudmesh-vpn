@@ -18,7 +18,7 @@ class VpnCommand(PluginCommand):
                 vpn status [-v]
                 vpn info
 
-          This command manages the von connection
+          This command manages the vpn connection
 
           Options:
               -v      debug [default: False]
@@ -54,6 +54,26 @@ class VpnCommand(PluginCommand):
                   debug=arguments["-v"])
 
         if arguments.connect:
+            if arguments['service']:
+                service = arguments['service'].lower()
+                status = vpn.pw_fetcher(service)
+                
+                if not status:
+                    Console.error("failed")
+                    return
+                else:
+                    Console.ok("Connecting ... ")
+                    vpn.connect({'user': status[0],
+                                 'pw': status[1],
+                                 'service': service})
+                    if vpn.enabled():
+                        Console.ok("ok")
+                    else:
+                        Console.error("failed")
+                    return True
+
+                    
+                
             Console.ok("Connecting ... ")
             vpn.connect()
             if vpn.enabled():

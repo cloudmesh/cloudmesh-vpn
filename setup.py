@@ -21,21 +21,15 @@ import io
 
 def readfile(filename):
     with io.open(filename, encoding="utf-8") as stream:
-        return stream.read().split()
+        return stream.read().split('\n')
 
 
 # requiers = readfile ('requirements.txt')
 #
 # add minimum requirements here
 #
-requiers = """
-cloudmesh-cmd5
-cloudmesh-sys
-cloudmesh-inventory
-cloudmesh-configuration
-pexpect
-requests
-""".split("\n")
+
+requiers = readfile('requirements.txt')
 
 # dependency_links = ['http://github.com/nicolaiarocci/eve.git@develop']
 
@@ -45,7 +39,7 @@ with open('README.md') as f:
     long_description = f.read()
 
 NAME = "cloudmesh-vpn"
-DESCRIPTION = "A command called vpn and foo for the cloudmesh shell"
+DESCRIPTION = "Virtual Private Network connection in the cloudmesh suite"
 AUTHOR = "Gregor von Laszewski"
 AUTHOR_EMAIL = "laszewski@gmail.com"
 URL = "https://github.com/cloudmesh/cloudmesh-vpn"

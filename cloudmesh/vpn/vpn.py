@@ -16,6 +16,16 @@ from cloudmesh.common.systeminfo import os_is_windows
 if os_is_windows():
     import pyuac
 
+organizations = {'ufl': {"auth": "pw",
+                         "name": "Gatorlink VPN",
+                         "host": "vpn.ufl.edu",
+                         "user": True},
+                 'uva': {"auth": "cert",
+                         "name": "UVA Anywhere",
+                         "host": "uva-anywhere-1.itc.virginia.edu",
+                         "user": False}
+                }
+
 # mac /opt/cisco/secureclient/bin/vpn
 # mac: /opt/cisco/anyconnect/bin
 
@@ -59,16 +69,18 @@ class Vpn:
             self.timeout = timeout
 
         if os_is_windows():
-            self.anyconnect = r'C:\Program Files (x86)\Cisco\Cisco Secure Client\vpncli.exe'
+            system_drive = os.environ.get('SYSTEMDRIVE', 'C:')
+            self.anyconnect = fr'{system_drive}\Program Files (x86)\Cisco\Cisco Secure Client\vpncli.exe'
+            self.openconnect = r'openconnect'
         elif os_is_mac():
             self.anyconnect = None
             for command in ["/opt/cisco/anyconnect/bin/vpn",
                             "/opt/cisco/secureclient/bin/vpn"]:
                 if os.path.isfile(command):
                     self.anyconnect = command
-                    break;
+                    break
             if self.anyconnect is None:
-                raise NotImplementedError("vpn cCLI not found")
+                raise NotImplementedError("vpn CLI not found")
         elif os_is_linux():
             self.anyconnect = "/opt/cisco/anyconnect/bin/vpn"
         else:
@@ -80,6 +92,8 @@ class Vpn:
             # self.service = "https://uva-anywhere-1.itc.virginia.edu"
         else:
             self.service = service
+
+        self.any = False
 
     def is_docker(self):
         path = '/proc/self/cgroup'
@@ -96,8 +110,21 @@ class Vpn:
         state = False
         result = ""
         if os_is_windows():
-            result = Shell.run("route print").strip()
-            state = "Cisco AnyConnect" in result
+            r = str(subprocess.run(f"{self.anyconnect} state",
+                                    capture_output=True,
+                                    text=True))
+            
+            state = 'state: Connected' in r
+            # result = Shell.run("route print").strip()
+            # state = "Cisco AnyConnect" in result
+            if state is True:
+                self.any = True
+            if state is False:
+                import psutil
+                process_name = "openconnect.exe"  # Adjust as needed
+                for process in psutil.process_iter(attrs=['name']):
+                    if process.info['name'] == process_name:
+                        state = True
         elif os_is_mac():
             command = f'echo state | {self.anyconnect} -s'
             result = Shell.run(command)
@@ -117,7 +144,7 @@ class Vpn:
     def is_uva(self):
         state = False
         if os_is_windows():
-            result = requests.get("ipinfo.io")
+            result = requests.get("https://ipinfo.io")
             state = "University of Virginia" in result.json()["org"]
         elif os_is_mac():
             command = self.anyconnect
@@ -133,28 +160,107 @@ class Vpn:
         self._debug(result)
         return state
 
-    def connect(self):
+    def connect(self, *args):
+        # args[0] is dict with
+        # keys named user, pw, and service.
+        
         if self.enabled():
             Console.warning("VPN is already activated")
             return ""
+
+        if args:
+            creds = args[0]
+            vpn_name = creds['service']
+        else:
+            vpn_name = 'uva'
+            
 
         if os_is_windows():
             if not pyuac.isUserAdmin():
                 pyuac.runAsAdmin()
 
-            mycommand = rf'{self.anyconnect} connect "UVA Anywhere"'
+            # mycommand = rf'{self.anyconnect} {organizations[vpn_name]["host"]} --os=win --protocol=anyconnect --user={creds["user"]} --passwd-on-stdin'
+            
+            if not organizations[vpn_name]["user"]:
+                mycommand = rf'{self.anyconnect} connect "{organizations[vpn_name]["name"]}"'
+                
+            else:
+                mycommand = rf'{self.openconnect} {organizations[vpn_name]["host"]} --os=win --protocol=anyconnect --user={creds["user"]}'
+                mycommand = rf'printf "{creds["user"]}\n{creds["pw"]}\ny" | "{self.anyconnect}" -s connect "{organizations[vpn_name]["name"]}"'
+            # print(mycommand)
             service_started = False
             while not service_started:
-                r = pexpect.popen_spawn.PopenSpawn(mycommand)
-                r.timeout = 3
-                sys.stdout.reconfigure(encoding='utf-8')
-                r.logfile = sys.stdout.buffer
+                if organizations[vpn_name]["user"] is True:
+                    Console.warning('It will ask you for your password,\n'
+                                    'but it is already entered. Just confirm DUO.\n')
+                    os.system(mycommand)
+                
+                
+                    service_started = True
+                    return True
+                # import pystray
+                # from PIL import Image
+                # # Load your custom image for the icon
+                # script_directory = os.path.dirname(os.path.abspath(__file__))
+
+                # # Construct the full path to the image file
+                # image_filename = "favicon.png"
+                # image_path = os.path.join(script_directory, image_filename)
+
+                # # Define a function to activate when the icon is clicked
+                # def on_clicked(icon, item):
+                #     print("Icon clicked!")
+
+                # # Load the custom image for the icon
+                # image = Image.open(image_path)
+
+                # # Create a menu with an item
+                # menu = (
+                #     pystray.MenuItem("Click me!", on_clicked),
+                # )
+
+                # # Create the system tray icon
+                # icon = pystray.Icon("name_of_your_icon", image, "Tooltip text", menu)
+                # # Run the icon in the background
+                # icon.run_detached()
+
+
+
+                # print('im here')
+                # try:
+                #     print('a')
+
+                #     # subprocess.run(mycommand, input=creds['pw'], text=True, stderr=subprocess.STDOUT)
+                #     print('b')
+                #     p = subprocess.Popen(mycommand.split(),stdout=subprocess.PIPE,stdin=subprocess.PIPE)
+                #     print('c')
+                #     p.stdin.write(str.encode(creds['pw'])) #expects a bytes type object
+                #     print('d')
+                    
+                #     print('e')
+                #     p.stdin.close()
+                    
+                # except KeyboardInterrupt:
+                #     icon.stop()
+                #     exit()
+
+                # Console.ok('Confirm DUO Mobile if needed.')
+                # time.sleep()
+                # return True
+                # with open(os.devnull, 'wb') as nullfile:
+                    # r = pexpect.popen_spawn.PopenSpawn(mycommand, logfile=nullfile)
+                r = pexpect.popen_spawn.PopenSpawn(mycommand, logfile=sys.stdout.buffer)
+                r.timeout = 12
+
                 result = r.expect([pexpect.TIMEOUT,
-                                   r"^.*accept.*$",
-                                   r"^.*Another Cisco Secure Client.*$",
-                                   r"^.*VPN service is unavailable.*$",
-                                   r"^.*No valid certificate.*$",
-                                   pexpect.EOF])
+                                r"^.*accept.*$",
+                                r"^.*Another Cisco Secure Client.*$",
+                                r"^.*VPN service is unavailable.*$",
+                                r"^.*No valid certificate.*$",
+                                r"^.*sername.*$",
+                                r"^.*'yes' to accept,.*$",
+                                pexpect.EOF])
+                
                 if result in [0, 2, 3]:
                     Console.warning('Restarting vpnagent to avoid conflict')
 
@@ -178,22 +284,60 @@ class Vpn:
                     except:
                         pass
 
+                # PW AUTHENTICATION
+                if result == 5:
+                    # import ctypes
+                    if len(r.after.strip()) > len("Username:"):
+                        # this means that default user exists
+                        r.sendline()  # Send a line break to clear any additional input
+                    else:       
+                        r.sendline(creds['user'])  # Send the actual username
+                    
+                    result2 = r.expect([pexpect.TIMEOUT, "^.*ssword.*$", pexpect.EOF])
+                    if result2 == 1:
+                        r.sendline(creds['pw'])
+                    Console.warning("Check DUO")
+                    
+                    r.timeout = 60
+                    result2 = r.expect([pexpect.TIMEOUT, "^.*Got CONNECT response: HTTP/1.1 200 OK.*$", "failed"])
+                    if result2 == 1:
+                        # r.detach()
+                        service_started = True
+                        Console.warning("You are connected but nonblocking has not yet been implemented")
+                        r.wait()
+                        return True
+                    if result2 == 2:
+                        import keyring as kr
+                        Console.error('Incorrect password.\n'
+                                      'Deleting password...')
+                        kr.delete_password(vpn_name, "cloudmesh-pw")
+                        kr.delete_password(vpn_name, "cloudmesh-user")
+                        os._exit(1)
+                    
+                    
                 if result == 1:
                     service_started = True
                     r.sendline('y')
                     result2 = r.expect([pexpect.TIMEOUT, "^.*Connected.*$", pexpect.EOF])
                     if result2 == 1:
                         Console.ok('Successfully connected')
+                        
                         return True
+                        
 
                 elif result == 4:
                     import ctypes  # An included library with Python install.
                     # 0x1000 keeps it topmost
                     ctypes.windll.user32.MessageBoxW(0, "Your UVA certificate has expired!\nRedirecting you to the appropriate UVA webpage...",
-                                                     "Oops", 0x1000)
+                                                    "Oops", 0x1000)
                     Shell.browser('https://in.virginia.edu/installcert')
                     return False
-
+                if result == 6:
+                    r.sendline('yes')
+                    result2 = r.expect([pexpect.TIMEOUT, "^.*ssword.*$", pexpect.EOF])
+                    if result2 == 1:
+                        r.sendline(creds['pw'])
+                        
         elif os_is_mac():
 
             mycommand = rf'{self.anyconnect} connect "UVA Anywhere"'
@@ -277,17 +421,34 @@ class Vpn:
             return ""
 
         if os_is_windows():
-            mycommand = fr'{self.anyconnect} disconnect "{self.service}"'
-            # mycommand = mycommand.replace("\\", "/")
-            r = pexpect.popen_spawn.PopenSpawn(mycommand)
-            sys.stdout.reconfigure(encoding='utf-8')
-            r.logfile = sys.stdout.buffer
-            # time.sleep(5)
-            # r.sendline('y')
+            
+            if self.any is True:
+                mycommand = fr'{self.anyconnect} disconnect "{self.service}"'
+                # mycommand = mycommand.replace("\\", "/")
+                r = pexpect.popen_spawn.PopenSpawn(mycommand)
+                sys.stdout.reconfigure(encoding='utf-8')
+                r.logfile = sys.stdout.buffer
+                # time.sleep(5)
+                # r.sendline('y')
 
-            result = r.expect([pexpect.TIMEOUT, r"^.*Disconnected.*$", pexpect.EOF])
-            if result == 1:
-                Console.ok('Successfully disconnected')
+                result = r.expect([pexpect.TIMEOUT, r"^.*Disconnected.*$", pexpect.EOF])
+                if result == 1:
+                    Console.ok('Successfully disconnected')
+                return
+
+            import psutil
+            # Define the process name to search for
+            process_name = "openconnect.exe"  # Adjust as needed
+
+            # Iterate through all running processes and terminate those with the specified name
+            for process in psutil.process_iter(attrs=['pid', 'name']):
+                if process.info['name'] == process_name:
+                    print(f"Terminating process {process.info['pid']}")
+                    try:
+                        psutil.Process(process.info['pid']).terminate()
+                    except psutil.NoSuchProcess:
+                        pass
+
         elif os_is_mac():
             command = f'{self.anyconnect} disconnect "{self.service}"'
             result = Shell.run(command)
@@ -308,3 +469,42 @@ class Vpn:
     def info(self):
         r = Shell.run('curl -s ipinfo.io')
         return r
+
+    def pw_fetcher(self,
+                   org):
+        
+        if org not in organizations:
+            Console.error(f'Unknown service {org}')
+            return False
+        else:
+            Console.ok("recognized")
+            if organizations[org]['auth'] == 'pw':
+                
+                import keyring as kr
+                import getpass
+
+                stored_pw = kr.get_password(org, "cloudmesh-pw")
+                if stored_pw is None:
+                    Console.warning("There is no password stored.")
+                    username = input(f"Enter your {org} username: ")
+
+                    while True:
+                        password = getpass.getpass(f"Enter your {org} password: ")
+                        confirm_password = getpass.getpass("Confirm your password: ")
+
+                        if password == confirm_password:
+                            break
+                        else:
+                            print("Passwords do not match. Please try again.")
+                    # we need to use cloudmesh as the username,
+                    # it is just an arbitrary alias.
+                    # and this is ok since we are allowed to enter
+                    # multiple organizations to the keyring
+                    kr.set_password(org,"cloudmesh-pw", password)
+                    kr.set_password(org,"cloudmesh-user", username)
+                
+                return kr.get_password(org, "cloudmesh-user"), kr.get_password(org, "cloudmesh-pw")
+                    
+                # print(kr.get_password(org, "cloudmesh"))
+                
+
