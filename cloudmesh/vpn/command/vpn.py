@@ -35,7 +35,7 @@ class VpnCommand(PluginCommand):
             vpn disconnect
                 disconnects from the VPN.
 
-            vpn connect
+            vpn connect [--service=SERVICE]
                 connects to the UVA Anywhere VPN.
 
                 If the VPN is already connected a warning is shown.
@@ -59,8 +59,9 @@ class VpnCommand(PluginCommand):
                 status = vpn.pw_fetcher(service)
                 
                 if not status:
-                    Console.error("failed")
-                    return
+                    if vpn.is_user_auth(service):
+                        Console.error("failed")
+                        return
                 else:
                     Console.ok("Connecting ... ")
                     vpn.connect({'user': status[0],

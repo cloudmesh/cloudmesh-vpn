@@ -106,6 +106,9 @@ class Vpn:
         if self.debug:
             print(msg)
 
+    def is_user_auth(self, org):
+        return organizations[org.lower()]['user']
+
     def enabled(self=None):
         state = False
         result = ""
@@ -318,11 +321,14 @@ class Vpn:
                 if result == 1:
                     service_started = True
                     r.sendline('y')
-                    result2 = r.expect([pexpect.TIMEOUT, "^.*Connected.*$", pexpect.EOF])
+                    result2 = r.expect([pexpect.TIMEOUT, "^.*Connected.*$", "^.*Downloading Cisco.*$", pexpect.EOF])
                     if result2 == 1:
                         Console.ok('Successfully connected')
                         
                         return True
+                    elif result2 == 2:
+                        Console.error("Cisco has decided to begin updating!\nPlease finish the update process.")
+                        exit()
                         
 
                 elif result == 4:
