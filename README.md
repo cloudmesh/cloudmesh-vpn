@@ -1,5 +1,13 @@
 # cms vpn
 
+## Supported organizations
+
+<div style="display: flex; align-items: flex-start;">
+    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/University_of_Virginia_Rotunda_logo.svg/2007px-University_of_Virginia_Rotunda_logo.svg.png" alt="fiu" width="100" style="margin-right: 10px;"/>
+    <img src="https://brand.fiu.edu/_assets/images/fiu-alone.png" alt="fiu" width="200" style="margin-right: 10px;"/>
+    <img src="https://www.ufl.edu/wp-content/uploads/sites/5/2022/02/UF-Signature-Converted.png" alt="uf" width="300" style="margin-left: 10px; object-fit: cover; object-position: left; width: 150px; height: 100px;"/>
+</div>
+
 ## Windows
 
 This requires installation of the Cisco
