@@ -98,3 +98,4 @@ ENV/
 *.cer
 **/vscode*
 *.out
+*.nupkg

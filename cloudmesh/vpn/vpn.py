@@ -13,17 +13,27 @@ from cloudmesh.common.systeminfo import os_is_linux
 from cloudmesh.common.systeminfo import os_is_mac
 from cloudmesh.common.systeminfo import os_is_windows
 
+from cloudmesh.vpn.windows import win_install
+
 if os_is_windows():
     import pyuac
 
+# 2fa does not refer to duo but rather second password
 organizations = {'ufl': {"auth": "pw",
                          "name": "Gatorlink VPN",
                          "host": "vpn.ufl.edu",
-                         "user": True},
+                         "user": True,
+                         "2fa": False},
                  'uva': {"auth": "cert",
                          "name": "UVA Anywhere",
                          "host": "uva-anywhere-1.itc.virginia.edu",
-                         "user": False}
+                         "user": False,
+                         "2fa": False},
+                 'fiu': {"auth": "pw",
+                         "name": "vpn.fiu.edu",
+                         "host": "vpn.fiu.edu",
+                         "user": True,
+                         "2fa": True}
                 }
 
 # mac /opt/cisco/secureclient/bin/vpn
@@ -71,7 +81,12 @@ class Vpn:
         if os_is_windows():
             system_drive = os.environ.get('SYSTEMDRIVE', 'C:')
             self.anyconnect = fr'{system_drive}\Program Files (x86)\Cisco\Cisco Secure Client\vpncli.exe'
+            if not os.path.isfile(self.anyconnect):
+                Console.info("Anyconnect not found. Installing anyconnect...")
+                win_install()
+                
             self.openconnect = r'openconnect'
+
         elif os_is_mac():
             self.anyconnect = None
             for command in ["/opt/cisco/anyconnect/bin/vpn",
@@ -81,6 +96,7 @@ class Vpn:
                     break
             if self.anyconnect is None:
                 raise NotImplementedError("vpn CLI not found")
+            
         elif os_is_linux():
             self.anyconnect = "/opt/cisco/anyconnect/bin/vpn"
         else:
@@ -190,6 +206,8 @@ class Vpn:
             else:
                 mycommand = rf'{self.openconnect} {organizations[vpn_name]["host"]} --os=win --protocol=anyconnect --user={creds["user"]}'
                 mycommand = rf'printf "{creds["user"]}\n{creds["pw"]}\ny" | "{self.anyconnect}" -s connect "{organizations[vpn_name]["name"]}"'
+            if organizations[vpn_name]["2fa"]:
+                mycommand = rf'printf "{creds["user"]}\n{creds["pw"]}\npush\ny" | "{self.anyconnect}" -s connect "{organizations[vpn_name]["name"]}"'
             # print(mycommand)
             service_started = False
             while not service_started:
@@ -253,7 +271,7 @@ class Vpn:
                 # with open(os.devnull, 'wb') as nullfile:
                     # r = pexpect.popen_spawn.PopenSpawn(mycommand, logfile=nullfile)
                 r = pexpect.popen_spawn.PopenSpawn(mycommand, logfile=sys.stdout.buffer)
-                r.timeout = 12
+                r.timeout = 25
 
                 result = r.expect([pexpect.TIMEOUT,
                                 r"^.*accept.*$",
@@ -328,7 +346,7 @@ class Vpn:
                         return True
                     elif result2 == 2:
                         Console.error("Cisco has decided to begin updating!\nPlease finish the update process.")
-                        exit()
+                        return
                         
 
                 elif result == 4:
