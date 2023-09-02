@@ -116,6 +116,29 @@ class Vpn:
 
         self.any = False
 
+    def windows_stop_service(self):
+        Console.warning('Restarting vpnagent to avoid conflict')
+
+        try:
+            r = os.system('taskkill /im vpnagent.exe /F')
+        except:
+            pass
+
+        try:
+            r = Shell.run('net stop csc_vpnagent')
+        except:
+            pass
+
+        try:
+            r = Shell.run('net start csc_vpnagent')
+        except:
+            pass
+
+        try:
+            r = os.system('taskkill /im csc_ui.exe /F')
+        except:
+            pass
+
     def is_docker(self):
         path = '/proc/self/cgroup'
         return (
@@ -219,6 +242,7 @@ class Vpn:
                 if organizations[vpn_name]["user"] is True:
                     Console.warning('It will ask you for your password,\n'
                                     'but it is already entered. Just confirm DUO.\n')
+                    self.windows_stop_service()
                     os.system(mycommand)
                 
                 
@@ -288,27 +312,7 @@ class Vpn:
                                 pexpect.EOF])
                 
                 if result in [0, 2, 3]:
-                    Console.warning('Restarting vpnagent to avoid conflict')
-
-                    try:
-                        r = os.system('taskkill /im vpnagent.exe /F')
-                    except:
-                        pass
-
-                    try:
-                        r = Shell.run('net stop csc_vpnagent')
-                    except:
-                        pass
-
-                    try:
-                        r = Shell.run('net start csc_vpnagent')
-                    except:
-                        pass
-
-                    try:
-                        r = os.system('taskkill /im csc_ui.exe /F')
-                    except:
-                        pass
+                    self.windows_stop_service()
 
                 # PW AUTHENTICATION
                 if result == 5:
