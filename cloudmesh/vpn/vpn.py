@@ -33,7 +33,12 @@ organizations = {'ufl': {"auth": "pw",
                          "name": "vpn.fiu.edu",
                          "host": "vpn.fiu.edu",
                          "user": True,
-                         "2fa": True}
+                         "2fa": True},
+                 'famu': {"auth": "pw",
+                         "name": "vpn.famu.edu",
+                         "host": "vpn.famu.edu",
+                         "user": True,
+                         "2fa": False},
                 }
 
 # mac /opt/cisco/secureclient/bin/vpn
