@@ -119,10 +119,11 @@ class Vpn:
     def windows_stop_service(self):
         Console.warning('Restarting vpnagent to avoid conflict')
 
-        try:
-            r = os.system('taskkill /im vpnagent.exe /F')
-        except:
-            pass
+        for program in ['vpnagent.exe', 'vpncli.exe']:
+            try:
+                r = os.system(f'taskkill /im {program} /F')
+            except:
+                pass
 
         try:
             r = Shell.run('net stop csc_vpnagent')
