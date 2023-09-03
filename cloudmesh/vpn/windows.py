@@ -15,7 +15,7 @@ def win_install():
     status = Shell.install_chocolatey()
     if status is False:
         os._exit(1)
-    Console.info('Installing cisco...')
+    Console.msg('Installing cisco...')
     # try:
     #     r =
     # except subprocess.CalledProcessError as e:

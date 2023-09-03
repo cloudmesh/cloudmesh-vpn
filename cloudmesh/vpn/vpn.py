@@ -87,7 +87,7 @@ class Vpn:
             system_drive = os.environ.get('SYSTEMDRIVE', 'C:')
             self.anyconnect = fr'{system_drive}\Program Files (x86)\Cisco\Cisco Secure Client\vpncli.exe'
             if not os.path.isfile(self.anyconnect):
-                Console.info("Anyconnect not found. Installing anyconnect...")
+                Console.msg("Anyconnect not found. Installing anyconnect...")
                 win_install()
                 
             self.openconnect = r'openconnect'
