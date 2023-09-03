@@ -8,10 +8,28 @@
     <img src="https://www.ufl.edu/wp-content/uploads/sites/5/2022/12/UF-logo-500x500-1.png" alt="uf" width="100" style="margin-left: 10px;"/>
 </div>
 
-## Windows
+## Install and Usage
 
-This requires installation of the Cisco
-Secure Client located at <https://in.virginia.edu/vpn>.
+### Windows
+
+Open powershell as administrator.
+
+Execute these commands:
+
+```bash
+python --version
+```
+
+If no number shows up, then you do not have Python. Download it from https://www.python.org/downloads/ and check `Add python.exe to PATH` in the installer.
+
+If Python was just installed, open a new powershell as administrator.
+Either way, execute:
+
+```bash
+mkdir ~/cm & cd ~/cm
+pip install cloudmesh-installer
+cloudmesh-installer get vpn
+```
 
 To connect to the UVA Anywhere VPN, run
 
@@ -19,7 +37,14 @@ To connect to the UVA Anywhere VPN, run
 cms vpn connect
 ```
 
-To disconnect from UVA Anywhere, run
+For other schools, the `--service` flag can be used:
+
+```bash
+cms vpn connect --service=ufl
+# possible services are uva fiu ufl
+```
+
+To disconnect from current VPN, run
 
 ```bash
 cms vpn disconnect
