@@ -117,7 +117,7 @@ class Vpn:
         self.any = False
 
     def windows_stop_service(self):
-        Console.warning('Restarting vpnagent to avoid conflict')
+        Console.msg('Restarting vpnagent to avoid conflict')
 
         for program in ['vpnagent.exe', 'vpncli.exe']:
             try:
@@ -213,7 +213,7 @@ class Vpn:
         # keys named user, pw, and service.
         
         if self.enabled():
-            Console.warning("VPN is already activated")
+            Console.msg("VPN is already activated")
             return ""
 
         if args:
@@ -241,7 +241,7 @@ class Vpn:
             service_started = False
             while not service_started:
                 if organizations[vpn_name]["user"] is True:
-                    Console.warning('It will ask you for your password,\n'
+                    Console.msg('It will ask you for your password,\n'
                                     'but it is already entered. Just confirm DUO.\n')
                     self.windows_stop_service()
                     os.system(mycommand)
@@ -327,14 +327,14 @@ class Vpn:
                     result2 = r.expect([pexpect.TIMEOUT, "^.*ssword.*$", pexpect.EOF])
                     if result2 == 1:
                         r.sendline(creds['pw'])
-                    Console.warning("Check DUO")
+                    Console.msg("Check DUO")
                     
                     r.timeout = 60
                     result2 = r.expect([pexpect.TIMEOUT, "^.*Got CONNECT response: HTTP/1.1 200 OK.*$", "failed"])
                     if result2 == 1:
                         # r.detach()
                         service_started = True
-                        Console.warning("You are connected but nonblocking has not yet been implemented")
+                        Console.msg("You are connected but nonblocking has not yet been implemented")
                         r.wait()
                         return True
                     if result2 == 2:
@@ -451,7 +451,7 @@ class Vpn:
 
     def disconnect(self):
         if not self.enabled():
-            Console.warning("VPN is already deactivated")
+            Console.ok("VPN is already deactivated")
             return ""
 
         if os_is_windows():
@@ -519,7 +519,7 @@ class Vpn:
 
                 stored_pw = kr.get_password(org, "cloudmesh-pw")
                 if stored_pw is None:
-                    Console.warning("There is no password stored.")
+                    Console.msg("There is no password stored.")
                     username = input(f"Enter your {org} username: ")
 
                     while True:
