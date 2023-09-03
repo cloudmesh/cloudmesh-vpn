@@ -12,7 +12,9 @@ def win_install():
     # Extract the directory path from the script's path
     current_script_directory = os.path.dirname(current_script_path)
 
-    Shell.install_chocolatey()
+    status = Shell.install_chocolatey()
+    if status is False:
+        os._exit(1)
     Console.info('Installing cisco...')
     # try:
     #     r =
