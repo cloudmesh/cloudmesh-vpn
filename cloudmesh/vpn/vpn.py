@@ -1,5 +1,6 @@
 import os
 
+import psutil
 import requests
 import pexpect
 import time
@@ -87,7 +88,7 @@ class Vpn:
             system_drive = os.environ.get('SYSTEMDRIVE', 'C:')
             self.anyconnect = fr'{system_drive}\Program Files (x86)\Cisco\Cisco Secure Client\vpncli.exe'
             if not os.path.isfile(self.anyconnect):
-                Console.msg("Anyconnect not found. Installing anyconnect...")
+                Console.warning("Anyconnect not found. Installing anyconnect...")
                 win_install()
                 
             self.openconnect = r'openconnect'
@@ -117,7 +118,7 @@ class Vpn:
         self.any = False
 
     def windows_stop_service(self):
-        Console.msg('Restarting vpnagent to avoid conflict')
+        Console.warning('Restarting vpnagent to avoid conflict')
 
         for program in ['vpnagent.exe', 'vpncli.exe']:
             try:
@@ -168,15 +169,16 @@ class Vpn:
             if state is True:
                 self.any = True
             if state is False:
-                import psutil
                 process_name = "openconnect.exe"  # Adjust as needed
                 for process in psutil.process_iter(attrs=['name']):
                     if process.info['name'] == process_name:
                         state = True
+
         elif os_is_mac():
             command = f'echo state | {self.anyconnect} -s'
             result = Shell.run(command)
             state = "state: Connected" in result
+            
         elif os_is_linux():
             result = requests.get("https://ipinfo.io")
             state = "University of Virginia" in result.json()["org"]
@@ -213,7 +215,7 @@ class Vpn:
         # keys named user, pw, and service.
         
         if self.enabled():
-            Console.msg("VPN is already activated")
+            Console.ok("VPN is already activated")
             return ""
 
         if args:
@@ -241,8 +243,8 @@ class Vpn:
             service_started = False
             while not service_started:
                 if organizations[vpn_name]["user"] is True:
-                    Console.msg('It will ask you for your password,\n'
-                                    'but it is already entered. Just confirm DUO.\n')
+                    Console.warning('It will ask you for your password,\n'
+                                'but it is already entered. Just confirm DUO.\n')
                     self.windows_stop_service()
                     os.system(mycommand)
                 

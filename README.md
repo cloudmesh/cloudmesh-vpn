@@ -8,7 +8,7 @@
     <img src="https://www.ufl.edu/wp-content/uploads/sites/5/2022/12/UF-logo-500x500-1.png" alt="uf" width="100" style="margin-left: 10px;"/>
 </div>
 
-## Install and Usage
+## Install
 
 ### Windows
 
@@ -31,13 +31,16 @@ pip install cloudmesh-installer
 cloudmesh-installer get vpn
 ```
 
+
+## Usage
+
 To connect to the UVA Anywhere VPN, run
 
 ```bash
 cms vpn connect
 ```
 
-For other schools, the `--service` flag can be used:
+For other organizations, the `--service` flag can be used:
 
 ```bash
 cms vpn connect --service=ufl
