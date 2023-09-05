@@ -24,22 +24,57 @@ organizations = {'ufl': {"auth": "pw",
                          "name": "Gatorlink VPN",
                          "host": "vpn.ufl.edu",
                          "user": True,
-                         "2fa": False},
+                         "2fa": False,
+                         "group": False},
                  'uva': {"auth": "cert",
                          "name": "UVA Anywhere",
                          "host": "uva-anywhere-1.itc.virginia.edu",
                          "user": False,
-                         "2fa": False},
+                         "2fa": False,
+                         "group": False},
                  'fiu': {"auth": "pw",
                          "name": "vpn.fiu.edu",
                          "host": "vpn.fiu.edu",
                          "user": True,
-                         "2fa": True},
+                         "2fa": True,
+                         "group": False},
                  'famu': {"auth": "pw",
                          "name": "vpn.famu.edu",
                          "host": "vpn.famu.edu",
                          "user": True,
-                         "2fa": False},
+                         "2fa": False,
+                         "group": False},
+                 'nyu': {"auth": "pw",
+                         "name": "vpn.nyu.edu",
+                         "host": "vpn.nyu.edu",
+                         "user": True,
+                         "2fa": True,
+                         "group": True},
+                 'uci': {"auth": "pw",
+                         "name": "vpn.uci.edu",
+                         "host": "vpn.uci.edu",
+                         "user": True,
+                         "2fa": False,
+                         "group": True},
+                 'gmu': {"auth": "pw",
+                         "name": "vpn.gmu.edu",
+                         "host": "vpn.gmu.edu",
+                         "user": True,
+                         "2fa": False,
+                         "group": False},
+                 'olemiss': {"auth": "pw",
+                         "name": "vpn.olemiss.edu",
+                         "host": "vpn.olemiss.edu",
+                         "user": True,
+                         "2fa": False,
+                         "group": False},
+                 'sc': {"auth": "pw",
+                         "name": "vpn.sc.edu",
+                         "host": "vpn.sc.edu",
+                         "user": True,
+                         "2fa": False,
+                         "group": True,
+                         "pw_concat": True},
                 }
 
 # mac /opt/cisco/secureclient/bin/vpn
@@ -231,14 +266,23 @@ class Vpn:
 
             # mycommand = rf'{self.anyconnect} {organizations[vpn_name]["host"]} --os=win --protocol=anyconnect --user={creds["user"]} --passwd-on-stdin'
             
+            inner_command = ""
+
             if not organizations[vpn_name]["user"]:
                 mycommand = rf'{self.anyconnect} connect "{organizations[vpn_name]["name"]}"'
                 
             else:
-                mycommand = rf'{self.openconnect} {organizations[vpn_name]["host"]} --os=win --protocol=anyconnect --user={creds["user"]}'
-                mycommand = rf'printf "{creds["user"]}\n{creds["pw"]}\ny" | "{self.anyconnect}" -s connect "{organizations[vpn_name]["name"]}"'
+                # full_command = rf'{self.openconnect} {organizations[vpn_name]["host"]} --os=win --protocol=anyconnect --user={creds["user"]}'
+                inner_command = rf'{creds["user"]}\n{creds["pw"]}\ny'
             if organizations[vpn_name]["2fa"]:
-                mycommand = rf'printf "{creds["user"]}\n{creds["pw"]}\npush\ny" | "{self.anyconnect}" -s connect "{organizations[vpn_name]["name"]}"'
+                inner_command = rf'{creds["user"]}\n{creds["pw"]}\npush\ny'
+            if organizations[vpn_name].get("pw_concat", False):
+                inner_command = rf'{creds["user"]}\n{creds["pw"]}\n{creds["pw"]},push\ny'
+            if organizations[vpn_name]["group"]:
+                # inner_command = rf'\n{creds["user"]}\n{creds["pw"]}\npush\ny'
+                inner_command = rf'\n' + inner_command
+            
+            full_command = rf'printf "{inner_command}" | "{self.anyconnect}" -s connect "{organizations[vpn_name]["name"]}"'
             # print(mycommand)
             service_started = False
             while not service_started:
@@ -246,7 +290,7 @@ class Vpn:
                     Console.warning('It will ask you for your password,\n'
                                 'but it is already entered. Just confirm DUO.\n')
                     self.windows_stop_service()
-                    os.system(mycommand)
+                    os.system(full_command)
                 
                 
                     service_started = True

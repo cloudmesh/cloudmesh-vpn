@@ -1,12 +1,23 @@
 # cms vpn
 
-## Supported organizations
+## Organizations
+
+### Functional
 
 <div style="display: flex; align-items: flex-start;">
     <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/University_of_Virginia_Rotunda_logo.svg/2007px-University_of_Virginia_Rotunda_logo.svg.png" alt="fiu" width="100" style="margin-right: 10px;"/>
     <img src="https://brand.fiu.edu/_assets/images/fiu-alone.png" alt="fiu" width="200" style="margin-right: 10px;"/>
     <img src="https://www.ufl.edu/wp-content/uploads/sites/5/2022/12/UF-logo-500x500-1.png" alt="uf" width="100" style="margin-left: 10px;"/>
 </div>
+
+### Untested
+
+* famu
+* nyu
+* uci
+* gmu
+* olemiss
+* sc
 
 ## Install
 
