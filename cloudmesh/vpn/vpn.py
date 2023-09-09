@@ -122,9 +122,6 @@ class Vpn:
         if os_is_windows():
             system_drive = os.environ.get('SYSTEMDRIVE', 'C:')
             self.anyconnect = fr'{system_drive}\Program Files (x86)\Cisco\Cisco Secure Client\vpncli.exe'
-            if not os.path.isfile(self.anyconnect):
-                Console.warning("Anyconnect not found. Installing anyconnect...")
-                win_install()
                 
             self.openconnect = r'openconnect'
 
@@ -151,6 +148,17 @@ class Vpn:
             self.service = service
 
         self.any = False
+
+    def anyconnect_checker(self,
+                           choco=False):
+        if not os.path.isfile(self.anyconnect):
+            if os_is_windows:
+                if choco is False:
+                    Console.error('Anyconnect not found. Please install, or use --choco parameter.')
+                    os._exit(1)
+                else:
+                    Console.warning("Anyconnect not found. Installing anyconnect...")
+                    win_install()
 
     def windows_stop_service(self):
         Console.warning('Restarting vpnagent to avoid conflict')

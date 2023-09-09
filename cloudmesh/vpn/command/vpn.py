@@ -13,7 +13,7 @@ class VpnCommand(PluginCommand):
         ::
 
           Usage:
-                vpn connect [--service=SERVICE] [--timeout=TIMEOUT] [-v]
+                vpn connect [--service=SERVICE] [--timeout=TIMEOUT] [-v] [--choco]
                 vpn disconnect [-v]
                 vpn status [-v]
                 vpn info
@@ -21,7 +21,8 @@ class VpnCommand(PluginCommand):
           This command manages the vpn connection
 
           Options:
-              -v      debug [default: False]
+              -v       debug [default: False]
+              --choco  installs chocolatey [default: False]
 
           Description:
             vpn info
@@ -46,7 +47,7 @@ class VpnCommand(PluginCommand):
 
         """
 
-        map_parameters(arguments, "service", "timeout")
+        map_parameters(arguments, "service", "timeout", "choco")
 
         from cloudmesh.vpn.vpn import Vpn
         vpn = Vpn(arguments.service,
@@ -54,6 +55,7 @@ class VpnCommand(PluginCommand):
                   debug=arguments["-v"])
 
         if arguments.connect:
+            vpn.anyconnect_checker(arguments['choco'])
             if arguments['service']:
                 service = arguments['service'].lower()
                 status = vpn.pw_fetcher(service)
