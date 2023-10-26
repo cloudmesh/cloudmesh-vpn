@@ -132,8 +132,8 @@ class Vpn:
                 if os.path.isfile(command):
                     self.anyconnect = command
                     break
-            if self.anyconnect is None:
-                raise NotImplementedError("vpn CLI not found")
+            # if self.anyconnect is None:
+            #     raise NotImplementedError("vpn CLI not found")
             
         elif os_is_linux():
             self.anyconnect = "/opt/cisco/anyconnect/bin/vpn"
@@ -157,7 +157,16 @@ class Vpn:
                     Console.error('Anyconnect not found. Please install, or use --choco parameter.')
                     os._exit(1)
                 else:
-                    Console.warning("Anyconnect not found. Installing anyconnect...")
+                    Console.warning('Anyconnect not found. Installing anyconnect...')
+                    win_install()
+
+                    
+            if os_is_mac:
+                if choco is False:
+                    Console.error('Anyonnect not found. Please install, or use --choco parameter.')
+                    os._exit(1)
+                else:
+                    Console.warning('Anyconnect not found. Installing anyconnect...')
                     win_install()
 
     def windows_stop_service(self):
