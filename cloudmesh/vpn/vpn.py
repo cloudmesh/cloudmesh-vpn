@@ -132,8 +132,9 @@ class Vpn:
                 if os.path.isfile(command):
                     self.anyconnect = command
                     break
-            # if self.anyconnect is None:
+            if self.anyconnect is None:
             #     raise NotImplementedError("vpn CLI not found")
+                self.anyconnect = "/opt/cisco/anyconnect/bin/vpn"
             
         elif os_is_linux():
             self.anyconnect = "/opt/cisco/anyconnect/bin/vpn"
