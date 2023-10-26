@@ -8,7 +8,7 @@ import subprocess
 
 def win_install():
     
-    if os_is_windows:
+    if os_is_windows():
         # Get the full path of the current Python script
         current_script_path = os.path.abspath(__file__)
 
@@ -60,7 +60,7 @@ def win_install():
             print("failed")
 
 
-    elif os_is_mac:
+    elif os_is_mac():
         status = Shell.install_brew()
         if status is False:
             os._exit(1)

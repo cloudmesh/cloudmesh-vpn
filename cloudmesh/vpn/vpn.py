@@ -153,7 +153,7 @@ class Vpn:
     def anyconnect_checker(self,
                            choco=False):
         if not os.path.isfile(self.anyconnect):
-            if os_is_windows:
+            if os_is_windows():
                 if choco is False:
                     Console.error('Anyconnect not found. Please install, or use --choco parameter.')
                     os._exit(1)
