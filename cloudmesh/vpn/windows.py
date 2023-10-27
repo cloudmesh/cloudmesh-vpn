@@ -65,12 +65,12 @@ def win_install():
         if status is False:
             os._exit(1)
 
-        Console.msg('Installing cisco...')
+        # Console.msg('Not implemented :)')
         # try:
         #     r =
         # except subprocess.CalledProcessError as e:
 
-        command = f'cd {current_script_directory}/bin && choco install chocolatey-core.extension -y && choco pack && choco install cisco-secure-client --debug --verbose --source . --force -y'
+        command = f'cd {current_script_directory}/bin & brew install --build-from-source ./cisco-secure-client.rb'
 
         # try:
 
