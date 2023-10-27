@@ -2,6 +2,7 @@
 #                https://rubydoc.brew.sh/Formula
 # PLEASE REMOVE ALL GENERATED COMMENTS BEFORE SUBMITTING YOUR PULL REQUEST!
 cask "cisco-secure-client" do
+  version "5.0.01242"
   desc "cisco client"
   homepage "https://www.cisco.com/site/us/en/products/security/secure-client/index.html"
   url "https://olemiss.edu/helpdesk/vpn/_files/cisco-secure-client-macos-5.0.01242-predeploy-k9.dmg"
