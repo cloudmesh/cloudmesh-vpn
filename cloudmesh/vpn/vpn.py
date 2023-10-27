@@ -170,6 +170,9 @@ class Vpn:
                 else:
                     Console.warning('Anyconnect not found. Installing anyconnect...')
                     win_install()
+                    Console.msg("If your install was successful, please fix the System Preferences to allow Cisco,"
+                                "then run your previous command again (up-arrow + enter).")
+                    os._exit(1)
 
     def windows_stop_service(self):
         Console.warning('Restarting vpnagent to avoid conflict')
@@ -439,31 +442,96 @@ class Vpn:
                         
         elif os_is_mac():
 
-            mycommand = rf'{self.anyconnect} connect "UVA Anywhere"'
+            inner_command = ""
+
+            if not organizations[vpn_name]["user"]:
+                mycommand = rf'{self.anyconnect} connect "{organizations[vpn_name]["name"]}"'
+                
+            else:
+                # full_command = rf'{self.openconnect} {organizations[vpn_name]["host"]} --os=win --protocol=anyconnect --user={creds["user"]}'
+                inner_command = rf'{creds["user"]}\n{creds["pw"]}\ny'
+            if organizations[vpn_name]["2fa"]:
+                inner_command = rf'{creds["user"]}\n{creds["pw"]}\npush\ny'
+            if organizations[vpn_name].get("pw_concat", False):
+                inner_command = rf'{creds["user"]}\n{creds["pw"]}\n{creds["pw"]},push\ny'
+            if organizations[vpn_name]["group"]:
+                # inner_command = rf'\n{creds["user"]}\n{creds["pw"]}\npush\ny'
+                inner_command = rf'\n' + inner_command
+            
+            full_command = rf'printf "{inner_command}" | "{self.anyconnect}" -s connect "{organizations[vpn_name]["name"]}"'
+            # print(mycommand)
             service_started = False
             while not service_started:
-                r = pexpect.spawn(mycommand)
-                r.timeout = self.timeout
-                sys.stdout.reconfigure(encoding='utf-8')
-                r.logfile = sys.stdout.buffer
+                if organizations[vpn_name]["user"] is True:
+                    Console.warning('It will ask you for your password,\n'
+                                'but it is already entered. Just confirm DUO.\n')
+                    # self.windows_stop_service()
+                    os.system(full_command)
+                
+                
+                    service_started = True
+                    return True
+
+                r = pexpect.spawn(mycommand, logfile=sys.stdout.buffer)
+                r.timeout = 25
+
                 result = r.expect([pexpect.TIMEOUT,
-                                   r"^.*accept.*$",
-                                   r"^.*Another AnyConnect application.*$",
-                                   r"^.*The VPN Service is not available.*$",
-                                   r"^.*No valid certificate.*$",
-                                   pexpect.EOF])
+                                r"^.*accept.*$",
+                                r"^.*Another Cisco Secure Client.*$",
+                                r"^.*VPN service is unavailable.*$",
+                                r"^.*No valid certificate.*$",
+                                r"^.*sername.*$",
+                                r"^.*'yes' to accept,.*$",
+                                pexpect.EOF])
+                
                 if result in [0, 2, 3]:
-                    Console.error('Please kill the AnyConnect windows.')
+                    # self.windows_stop_service()
+                    Console.error("Not implemented to stop service on mac")
                     return False
 
+                # PW AUTHENTICATION
+                if result == 5:
+                    # import ctypes
+                    if len(r.after.strip()) > len("Username:"):
+                        # this means that default user exists
+                        r.sendline()  # Send a line break to clear any additional input
+                    else:       
+                        r.sendline(creds['user'])  # Send the actual username
+                    
+                    result2 = r.expect([pexpect.TIMEOUT, "^.*ssword.*$", pexpect.EOF])
+                    if result2 == 1:
+                        r.sendline(creds['pw'])
+                    Console.msg("Check DUO")
+                    
+                    r.timeout = 60
+                    result2 = r.expect([pexpect.TIMEOUT, "^.*Got CONNECT response: HTTP/1.1 200 OK.*$", "failed"])
+                    if result2 == 1:
+                        # r.detach()
+                        service_started = True
+                        Console.msg("You are connected but nonblocking has not yet been implemented")
+                        r.wait()
+                        return True
+                    if result2 == 2:
+                        import keyring as kr
+                        Console.error('Incorrect password.\n'
+                                      'Deleting password...')
+                        kr.delete_password(vpn_name, "cloudmesh-pw")
+                        kr.delete_password(vpn_name, "cloudmesh-user")
+                        os._exit(1)
+                    
+                    
                 if result == 1:
                     service_started = True
                     r.sendline('y')
-                    result2 = r.expect(
-                        [pexpect.TIMEOUT, "^.*Connected.*$", pexpect.EOF])
+                    result2 = r.expect([pexpect.TIMEOUT, "^.*Connected.*$", "^.*Downloading Cisco.*$", pexpect.EOF])
                     if result2 == 1:
                         Console.ok('Successfully connected')
+                        
                         return True
+                    elif result2 == 2:
+                        Console.error("Cisco has decided to begin updating!\nPlease finish the update process.")
+                        return
+                        
 
                 elif result == 4:
                     applescript = """
@@ -477,6 +545,50 @@ class Vpn:
                                     shell=True)
                     Shell.browser('https://in.virginia.edu/installcert')
                     return False
+                if result == 6:
+                    r.sendline('yes')
+                    result2 = r.expect([pexpect.TIMEOUT, "^.*ssword.*$", pexpect.EOF])
+                    if result2 == 1:
+                        r.sendline(creds['pw'])
+
+            # mycommand = rf'{self.anyconnect} connect "UVA Anywhere"'
+            # service_started = False
+            # while not service_started:
+            #     r = pexpect.spawn(mycommand)
+            #     r.timeout = self.timeout
+            #     sys.stdout.reconfigure(encoding='utf-8')
+            #     r.logfile = sys.stdout.buffer
+            #     result = r.expect([pexpect.TIMEOUT,
+            #                        r"^.*accept.*$",
+            #                        r"^.*Another AnyConnect application.*$",
+            #                        r"^.*The VPN Service is not available.*$",
+            #                        r"^.*No valid certificate.*$",
+            #                        pexpect.EOF])
+            #     if result in [0, 2, 3]:
+            #         Console.error('Please kill the AnyConnect windows.')
+            #         return False
+
+            #     if result == 1:
+            #         service_started = True
+            #         r.sendline('y')
+            #         result2 = r.expect(
+            #             [pexpect.TIMEOUT, "^.*Connected.*$", pexpect.EOF])
+            #         if result2 == 1:
+            #             Console.ok('Successfully connected')
+            #             return True
+
+            #     elif result == 4:
+            #         applescript = """
+            #         display dialog "Your UVA certificate has expired!\nRedirecting you to the appropriate UVA webpage..." ¬
+            #         with title "Oops" ¬
+            #         with icon caution ¬
+            #         buttons {"OK"}
+            #         """
+
+            #         subprocess.call("osascript -e '{}'".format(applescript),
+            #                         shell=True)
+            #         Shell.browser('https://in.virginia.edu/installcert')
+            #         return False
 
         elif os_is_linux():
 
