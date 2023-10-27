@@ -75,6 +75,7 @@ def win_install():
         command = f'brew install --cask {current_script_directory}/bin/cisco-secure-client.rb'
         # command = f'cd {current_script_directory}/bin ; ls'
         print(command)
+        Console.info("Cisco is now installing...")
         # try:
 
             # r = Shell.run()
