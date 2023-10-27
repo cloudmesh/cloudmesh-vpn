@@ -74,7 +74,7 @@ def win_install():
 
         command = f'brew install --cask {current_script_directory}/bin/cisco-secure-client.rb'
         # command = f'cd {current_script_directory}/bin ; ls'
-        print('command is', command)
+        print(command)
         # try:
 
             # r = Shell.run()
@@ -91,9 +91,9 @@ def win_install():
             # stderr=subprocess.PIPE,
             # universal_newlines=True  # Allows working with text output
         # )
-        print('process is,')
-        print(process)
-        print('stdout is,')
-        print(process.stdout.decode('utf-8'))
-        print(process.stderr.decode('utf-8'))
+        # print('process is,')
+        # print(process)
+        # print('stdout is,')
+        print("Output:", process.stdout.decode('utf-8'))
+        print("Errors:", process.stderr.decode('utf-8'))
 

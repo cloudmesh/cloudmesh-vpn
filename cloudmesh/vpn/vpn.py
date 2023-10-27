@@ -127,8 +127,9 @@ class Vpn:
 
         elif os_is_mac():
             self.anyconnect = None
-            for command in ["/opt/cisco/anyconnect/bin/vpn",
-                            "/opt/cisco/secureclient/bin/vpn"]:
+            for command in ["/opt/cisco/secureclient/bin/vpn",
+                            "/opt/cisco/anyconnect/bin/vpn"
+                            ]:
                 if os.path.isfile(command):
                     self.anyconnect = command
                     break
