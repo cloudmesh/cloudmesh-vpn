@@ -135,7 +135,7 @@ class Vpn:
                     break
             if self.anyconnect is None:
             #     raise NotImplementedError("vpn CLI not found")
-                self.anyconnect = "/opt/cisco/anyconnect/bin/vpn"
+                self.anyconnect = "/opt/cisco/secureclient/bin/vpn"
             
         elif os_is_linux():
             self.anyconnect = "/opt/cisco/anyconnect/bin/vpn"
