@@ -96,5 +96,5 @@ def win_install():
         # print(process)
         # print('stdout is,')
         print("Output:", process.stdout.decode('utf-8'))
-        print("Errors:", process.stderr.decode('utf-8'))
+        print(process.stderr.decode('utf-8'))
 

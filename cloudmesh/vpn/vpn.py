@@ -170,8 +170,8 @@ class Vpn:
                 else:
                     Console.warning('Anyconnect not found. Installing anyconnect...')
                     win_install()
-                    Console.msg("If your install was successful, please fix the System Preferences to allow Cisco,"
-                                "then run your previous command again (up-arrow + enter).")
+                    Console.info("If your install was successful, please\nchange the System Preferences to allow Cisco,\n"
+                                 "then run your previous command again (up-arrow + enter).")
                     os._exit(1)
 
     def windows_stop_service(self):
