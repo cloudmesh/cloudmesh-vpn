@@ -81,7 +81,7 @@ def win_install():
         # except subprocess.CalledProcessError as e:
         #     print(e.output)
 
-        process = subprocess.run(command.split(), shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        process = subprocess.run(command.split(), shell=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
 
         # process = subprocess.Popen(
