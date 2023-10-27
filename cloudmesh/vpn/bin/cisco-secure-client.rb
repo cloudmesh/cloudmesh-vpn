@@ -10,6 +10,5 @@ cask "cisco-secure-client" do
 
   # depends_on "cmake" => :build
 
-  
-  end
+
 end

@@ -81,19 +81,19 @@ def win_install():
         # except subprocess.CalledProcessError as e:
         #     print(e.output)
 
-        # process = subprocess.run(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        process = subprocess.run(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
 
-        process = subprocess.Popen(
-            command,
-            shell=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            universal_newlines=True  # Allows working with text output
-        )
-        # print('process is,')
-        # print(process)
-        # print('stdout is,')
-        # print(process.stdout.decode('utf-8'))
-        # print(process.stderr.decode('utf-8'))
+        # process = subprocess.Popen(
+            # command,
+            # shell=True,
+            # stdout=subprocess.PIPE,
+            # stderr=subprocess.PIPE,
+            # universal_newlines=True  # Allows working with text output
+        # )
+        print('process is,')
+        print(process)
+        print('stdout is,')
+        print(process.stdout.decode('utf-8'))
+        print(process.stderr.decode('utf-8'))
 
