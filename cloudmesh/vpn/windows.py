@@ -73,6 +73,7 @@ def win_install():
         # except subprocess.CalledProcessError as e:
 
         command = f'cd {current_script_directory}/bin && brew install --build-from-source ./cisco-secure-client.rb'
+        command = 'ls'
         print('command is', command)
         # try:
 
@@ -81,6 +82,8 @@ def win_install():
         #     print(e.output)
 
         process = subprocess.run(command.split(), shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+
         # process = subprocess.Popen(
             # command,
             # shell=True,
