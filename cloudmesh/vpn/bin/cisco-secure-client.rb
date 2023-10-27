@@ -7,7 +7,7 @@ cask "cisco-secure-client" do
   url "https://olemiss.edu/helpdesk/vpn/_files/cisco-secure-client-macos-5.0.01242-predeploy-k9.dmg"
   sha256 "54ce96a427efad22c755332f6b56fc3559e811a3add15cb3485e5e409bb20aaf"
 
-  app "Cisco Secure Client.app"
+  app "Cisco/Cisco Secure Client.app"
   # depends_on "cmake" => :build
 
 
