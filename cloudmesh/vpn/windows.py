@@ -7,13 +7,15 @@ import os
 import subprocess
 
 def win_install():
+
+    # Get the full path of the current Python script
+    current_script_path = os.path.abspath(__file__)
+
+    # Extract the directory path from the script's path
+    current_script_directory = os.path.dirname(current_script_path)
     
     if os_is_windows():
-        # Get the full path of the current Python script
-        current_script_path = os.path.abspath(__file__)
 
-        # Extract the directory path from the script's path
-        current_script_directory = os.path.dirname(current_script_path)
 
         status = Shell.install_chocolatey()
         if status is False:
