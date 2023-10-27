@@ -87,4 +87,9 @@ def win_install():
             stderr=subprocess.PIPE,
             universal_newlines=True  # Allows working with text output
         )
+        print('process is,')
+        print(process)
+        print('stdout is,')
+        print(process.stdout)
+        print(process.stderr)
 
