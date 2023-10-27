@@ -291,7 +291,7 @@ class Vpn:
             inner_command = ""
 
             if not organizations[vpn_name]["user"]:
-                mycommand = rf'{self.anyconnect} connect "{organizations[vpn_name]["name"]}"'
+                mycommand = rf'{self.anyconnect} connect "{organizations[vpn_name]["host"]}"'
                 
             else:
                 # full_command = rf'{self.openconnect} {organizations[vpn_name]["host"]} --os=win --protocol=anyconnect --user={creds["user"]}'
@@ -304,7 +304,7 @@ class Vpn:
                 # inner_command = rf'\n{creds["user"]}\n{creds["pw"]}\npush\ny'
                 inner_command = rf'\n' + inner_command
             
-            full_command = rf'printf "{inner_command}" | "{self.anyconnect}" -s connect "{organizations[vpn_name]["name"]}"'
+            full_command = rf'printf "{inner_command}" | "{self.anyconnect}" -s connect "{organizations[vpn_name]["host"]}"'
             # print(mycommand)
             service_started = False
             while not service_started:
@@ -445,7 +445,7 @@ class Vpn:
             inner_command = ""
 
             if not organizations[vpn_name]["user"]:
-                mycommand = rf'{self.anyconnect} connect "{organizations[vpn_name]["name"]}"'
+                mycommand = rf'{self.anyconnect} connect "{organizations[vpn_name]["host"]}"'
                 
             else:
                 # full_command = rf'{self.openconnect} {organizations[vpn_name]["host"]} --os=win --protocol=anyconnect --user={creds["user"]}'
@@ -458,7 +458,7 @@ class Vpn:
                 # inner_command = rf'\n{creds["user"]}\n{creds["pw"]}\npush\ny'
                 inner_command = rf'\n' + inner_command
             
-            full_command = rf'printf "{inner_command}" | "{self.anyconnect}" -s connect "{organizations[vpn_name]["name"]}"'
+            full_command = rf'printf "{inner_command}" | "{self.anyconnect}" -s connect "{organizations[vpn_name]["host"]}"'
             # print(mycommand)
             service_started = False
             while not service_started:
