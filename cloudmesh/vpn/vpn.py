@@ -126,16 +126,9 @@ class Vpn:
             self.openconnect = r'openconnect'
 
         elif os_is_mac():
-            self.anyconnect = None
-            for command in ["/opt/cisco/secureclient/bin/vpn",
-                            "/opt/cisco/anyconnect/bin/vpn"
-                            ]:
-                if os.path.isfile(command):
-                    self.anyconnect = command
-                    break
-            if self.anyconnect is None:
-            #     raise NotImplementedError("vpn CLI not found")
-                self.anyconnect = "/opt/cisco/secureclient/bin/vpn"
+            
+            self.anyconnect = "/opt/cisco/secureclient/bin/vpn"
+            
             
         elif os_is_linux():
             self.anyconnect = "/opt/cisco/anyconnect/bin/vpn"
