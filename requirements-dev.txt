@@ -1,4 +1,7 @@
+setuptools
 pytest
 coverage
 flake8
+pytest-cov
+pip-tools
 twine
