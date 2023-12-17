@@ -24,14 +24,7 @@ def readfile(filename):
         return stream.read().split('\n')
 
 
-# requiers = readfile ('requirements.txt')
-#
-# add minimum requirements here
-#
-
 requiers = readfile('requirements.txt')
-
-# dependency_links = ['http://github.com/nicolaiarocci/eve.git@develop']
 
 version = readfile("VERSION")[0].strip()
 
@@ -61,6 +54,7 @@ setup(
                  "examples",
                  "conda"),
         include=['cloudmesh']),
+    package_dir={"cloudmesh": "cloudmesh"},
     classifiers=[
         "Development Status :: 5 - Production/Stable",
         "Environment :: Web Environment",
