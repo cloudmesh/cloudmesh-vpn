@@ -2,37 +2,6 @@ cloudmesh-cmd5
 cloudmesh-sys
 cloudmesh-inventory
 cloudmesh-configuration
-atomicwrites
-certifi
-charset-normalizer
-colorama
-docopt
-fpyutils
-humanize
-idna
 keyring
-md-toc
-munch
-oyaml
 pexpect
-psutil
-ptyprocess
-pyfiglet
-python-dateutil
-python-hostlist
-pytimeparse
-pytz
-pyyaml
-    #   oyaml
-requests
-    #   fpyutils
-simplejson
-    #   munch
-    #   python-dateutil
-tabulate
-tqdm
-urllib3
-pyuac; platform_system == "Windows"
-pywin32; platform_system == "Windows"
-pystray
-Pillow
+pytest
