@@ -1,0 +1,5 @@
+bumpversion:
+- src/cloudmesh/vpn/__init__.py
+- src/cloudmesh/vpn/__version__.py
+- pyproject.toml
+- VERSION
