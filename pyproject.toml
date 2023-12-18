@@ -9,15 +9,18 @@ requires = [
 [project]
 name = "cloudmesh-vpn"
 version = "5.0.17"
-description = "A set of useful APIs for cloudmesh"
+description = "Virtual Private Network connection in the cloudmesh suite"
 readme = "README.md"
 requires-python = ">=3.8"
 license = {file = "LICENSE"}
 authors = [
-  {name = "Gregor von Laszewski", email = "laszewski@gmail.com"}
+    {name = "Gregor von Laszewski", email = "laszewski@gmail.com"},
+    {name = "J.P. Fleischer", email = "jacques.fleischer002@mymdc.net"}
+
 ]
 maintainers = [
-  {name = "Gregor von Laszewski", email = "laszewski@gmail.com"}
+    {name = "Gregor von Laszewski", email = "laszewski@gmail.com"},
+    {name = "J.P. Fleischer", email = "jacques.fleischer002@mymdc.net"}
 ]
 keywords = ["helper library", "cloudmesh"]
 classifiers = [
