@@ -107,13 +107,33 @@ organizations = {'ufl': {"auth": "pw",
 # close:
 #   /opt/cisco/anyconnect/bin/vpn disconnect;
 
+"""Provides a VPN (Virtual Private Network) class for managing VPN connections and disconnections.
+
+This module supports different VPN services and their configurations, including 
+authentication methods and group memberships.
+
+Attributes:
+    organizations (dict): A dictionary containing information about various VPN organizations.
+
+Classes:
+    Vpn: A class for managing VPN connections and disconnections.
+
+"""
+
 class Vpn:
+    """A class for managing VPN connections and disconnections."""
 
     def __init__(self,
                  service=None,
                  timeout=None,
                  debug=False):
+        """Initializes the Vpn object.
 
+        Args:
+            service (str): The VPN service name. Defaults to None.
+            timeout (int): The timeout value for various operations. Defaults to None.
+            debug (bool): If True, enables debug mode. Defaults to False.
+        """
         if timeout is None:
             self.timeout = 60
         else:
@@ -146,6 +166,11 @@ class Vpn:
 
     def anyconnect_checker(self,
                            choco=False):
+        """Checks if the AnyConnect VPN client is installed, installs it if needed.
+
+        Args:
+            choco (bool): If True, installs AnyConnect using Chocolatey. Defaults to False.
+        """
         if not os.path.isfile(self.anyconnect):
             if os_is_windows():
                 if choco is False:
@@ -168,6 +193,8 @@ class Vpn:
                     os._exit(1)
 
     def windows_stop_service(self):
+        """Restarts the vpnagent service on Windows to avoid conflicts."""
+
         Console.warning('Restarting vpnagent to avoid conflict')
 
         for program in ['vpnagent.exe', 'vpncli.exe']:
@@ -199,10 +226,23 @@ class Vpn:
         )
 
     def _debug(self, msg):
+        """Prints debug messages if debug mode is enabled.
+
+        Args:
+            msg (str): The debug message to print.
+        """
         if self.debug:
             print(msg)
 
     def is_user_auth(self, org):
+        """Checks if the specified organization requires user authentication.
+
+        Args:
+            org (str): The organization name.
+
+        Returns:
+            bool: True if user authentication is required, False otherwise.
+        """
         return organizations[org.lower()]['user']
 
     def enabled(self=None):
@@ -242,6 +282,11 @@ class Vpn:
 
     @property
     def is_uva(self):
+        """Checks if the VPN connection is to the University of Virginia (UVA).
+
+        Returns:
+            bool: True if connected to UVA, False otherwise.
+        """
         state = False
         if os_is_windows():
             result = requests.get("https://ipinfo.io")
@@ -261,6 +306,15 @@ class Vpn:
         return state
 
     def connect(self, *args):
+        """Connects to the VPN using the specified credentials.
+
+        Args:
+            args (tuple): Tuple containing dictionary with user credentials.
+
+        Returns:
+            bool: True if connection is successful, False otherwise.
+        """
+
         # args[0] is dict with
         # keys named user, pw, and service.
         
@@ -348,7 +402,7 @@ class Vpn:
                 #     print('c')
                 #     p.stdin.write(str.encode(creds['pw'])) #expects a bytes type object
                 #     print('d')
-                    
+
                 #     print('e')
                 #     p.stdin.close()
                     
@@ -620,6 +674,7 @@ class Vpn:
         # self._debug(result)
 
     def disconnect(self):
+        """Disconnects from the VPN."""
         if not self.enabled():
             Console.ok("VPN is already deactivated")
             return ""
@@ -671,12 +726,25 @@ class Vpn:
         # self._debug(result)
 
     def info(self):
+        """Retrieves information about the current network.
+
+        Returns:
+           str: Information about the current network.
+        """
         r = Shell.run('curl -s ipinfo.io')
         return r
 
     def pw_fetcher(self,
                    org):
-        
+        """Fetches the username and password for the specified organization.
+
+        Args:
+            org (str): The organization name.
+
+        Returns:
+            tuple: Tuple containing username and password.
+        """
+
         if org not in organizations:
             Console.error(f'Unknown service {org}')
             return False

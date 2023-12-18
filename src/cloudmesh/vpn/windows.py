@@ -1,3 +1,12 @@
+"""Module to handle installation of Cisco AnyConnect VPN client on Windows and macOS.
+
+This module includes functions to install the Cisco AnyConnect VPN client on Windows using Chocolatey
+and on macOS using Homebrew.
+
+Functions:
+    win_install: Installs Cisco AnyConnect VPN client based on the operating system (Windows or macOS).
+
+"""
 from cloudmesh.common.Shell import Shell
 from cloudmesh.common.Shell import Console
 from cloudmesh.common.systeminfo import os_is_linux
@@ -7,7 +16,14 @@ import os
 import subprocess
 
 def win_install():
+    """Installs Cisco AnyConnect VPN client on Windows using Chocolatey.
 
+     This function checks the operating system, installs Chocolatey if not installed,
+     and then installs the Cisco AnyConnect VPN client using Chocolatey.
+
+     Returns:
+         None
+     """
     # Get the full path of the current Python script
     current_script_path = os.path.abspath(__file__)
 
