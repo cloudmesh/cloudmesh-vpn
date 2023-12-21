@@ -61,8 +61,13 @@ dependencies = [
     "pexpect",
     "pytest",
 ]
+
 [project.urls]
-"Documentation" = "https://github.com/cloudmesh/cloudmesh-common"
+Homepage = "https://github.com/cloudmesh/cloudmesh-vpn"
+Documentation = "https://github.com/cloudmesh/cloudmesh-vpn/blob/main/README.md"
+Repository = "https://github.com/cloudmesh/cloudmesh-vpn.git"
+Issues = "https://github.com/cloudmesh/cloudmesh-vpn/issues"
+Changelog = "https://github.com/cloudmesh/cloudmesh-vpn/blob/main/CHANGELOG.md"
 
 [tool.setuptools.packages.find]
 where = ["src/"]
