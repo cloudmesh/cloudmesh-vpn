@@ -15,12 +15,12 @@ requires-python = ">=3.8"
 license = {file = "LICENSE"}
 authors = [
     {name = "Gregor von Laszewski", email = "laszewski@gmail.com"},
-    {name = "J.P. Fleischer", email = "jacques.fleischer002@mymdc.net"}
+    {name = "J.P. Fleischer", email = "jacquespfleischer@gmail.com"}
 
 ]
 maintainers = [
     {name = "Gregor von Laszewski", email = "laszewski@gmail.com"},
-    {name = "J.P. Fleischer", email = "jacques.fleischer002@mymdc.net"}
+    {name = "J.P. Fleischer", email = "jacquespfleischer@gmail.com"}
 ]
 keywords = ["helper library", "cloudmesh"]
 classifiers = [
@@ -70,5 +70,5 @@ Issues = "https://github.com/cloudmesh/cloudmesh-vpn/issues"
 Changelog = "https://github.com/cloudmesh/cloudmesh-vpn/blob/main/CHANGELOG.md"
 
 [tool.setuptools.packages.find]
-where = ["src/"]
+where = ["src"]
 include = ["cloudmesh.vpn", "cloudmesh.vpn.*"]

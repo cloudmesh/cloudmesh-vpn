@@ -338,7 +338,8 @@ class Vpn:
             inner_command = ""
 
             if not organizations[vpn_name]["user"]:
-                mycommand = rf'{self.anyconnect} connect "{organizations[vpn_name]["host"]}"'
+                # mycommand = rf'{self.anyconnect} connect "{organizations[vpn_name]["host"]}"'
+                mycommand = rf'{self.openconnect} "{organizations[vpn_name]["host"]}"'
                 
             else:
                 # full_command = rf'{self.openconnect} {organizations[vpn_name]["host"]} --os=win --protocol=anyconnect --user={creds["user"]}'
@@ -351,7 +352,9 @@ class Vpn:
                 # inner_command = rf'\n{creds["user"]}\n{creds["pw"]}\npush\ny'
                 inner_command = rf'\n' + inner_command
             
-            full_command = rf'printf "{inner_command}" | "{self.anyconnect}" -s connect "{organizations[vpn_name]["host"]}"'
+            # full_command = rf'printf "{inner_command}" | "{self.anyconnect}" -s connect "{organizations[vpn_name]["host"]}"'
+            script_location = os.path.join(os.path.dirname(__file__),  'bin', 'split-script-win.js')
+            full_command = rf'printf \"{inner_command}\" | \"{self.openconnect}\" -q --script=\"{script_location}\" \"{organizations[vpn_name]["host"]}\"'
             # print(mycommand)
             service_started = False
             while not service_started:
@@ -359,62 +362,14 @@ class Vpn:
                     Console.warning('It will ask you for your password,\n'
                                 'but it is already entered. Just confirm DUO.\n')
                     self.windows_stop_service()
-                    os.system(full_command)
+                    print(':)', fr'"C:\Program Files\Git\bin\bash.exe" -c "{full_command}"')
+                    import subprocess
+                    r = subprocess.Popen(fr'"C:\Program Files\Git\bin\bash.exe" -c "{full_command} &"')
                 
                 
                     service_started = True
                     return True
-                # import pystray
-                # from PIL import Image
-                # # Load your custom image for the icon
-                # script_directory = os.path.dirname(os.path.abspath(__file__))
 
-                # # Construct the full path to the image file
-                # image_filename = "favicon.png"
-                # image_path = os.path.join(script_directory, image_filename)
-
-                # # Define a function to activate when the icon is clicked
-                # def on_clicked(icon, item):
-                #     print("Icon clicked!")
-
-                # # Load the custom image for the icon
-                # image = Image.open(image_path)
-
-                # # Create a menu with an item
-                # menu = (
-                #     pystray.MenuItem("Click me!", on_clicked),
-                # )
-
-                # # Create the system tray icon
-                # icon = pystray.Icon("name_of_your_icon", image, "Tooltip text", menu)
-                # # Run the icon in the background
-                # icon.run_detached()
-
-
-
-                # print('im here')
-                # try:
-                #     print('a')
-
-                #     # subprocess.run(mycommand, input=creds['pw'], text=True, stderr=subprocess.STDOUT)
-                #     print('b')
-                #     p = subprocess.Popen(mycommand.split(),stdout=subprocess.PIPE,stdin=subprocess.PIPE)
-                #     print('c')
-                #     p.stdin.write(str.encode(creds['pw'])) #expects a bytes type object
-                #     print('d')
-
-                #     print('e')
-                #     p.stdin.close()
-                    
-                # except KeyboardInterrupt:
-                #     icon.stop()
-                #     exit()
-
-                # Console.ok('Confirm DUO Mobile if needed.')
-                # time.sleep()
-                # return True
-                # with open(os.devnull, 'wb') as nullfile:
-                    # r = pexpect.popen_spawn.PopenSpawn(mycommand, logfile=nullfile)
                 r = pexpect.popen_spawn.PopenSpawn(mycommand, logfile=sys.stdout.buffer)
                 r.timeout = 25
 
