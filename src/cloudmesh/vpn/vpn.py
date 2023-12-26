@@ -354,7 +354,7 @@ class Vpn:
             
             # full_command = rf'printf "{inner_command}" | "{self.anyconnect}" -s connect "{organizations[vpn_name]["host"]}"'
             script_location = os.path.join(os.path.dirname(__file__),  'bin', 'split-script-win.js')
-            full_command = rf'printf \"{inner_command}\" | \"{self.openconnect}\" -q --script=\"{script_location}\" \"{organizations[vpn_name]["host"]}\"'
+            full_command = rf'printf \"{inner_command}\" | \"{self.openconnect}\" --script=\"{script_location}\" \"{organizations[vpn_name]["host"]}\"'
             # print(mycommand)
             service_started = False
             while not service_started:
@@ -362,7 +362,7 @@ class Vpn:
                     Console.warning('It will ask you for your password,\n'
                                 'but it is already entered. Just confirm DUO.\n')
                     self.windows_stop_service()
-                    print(':)', fr'"C:\Program Files\Git\bin\bash.exe" -c "{full_command}"')
+                    # print(':)', fr'"C:\Program Files\Git\bin\bash.exe" -c "{full_command}"')
                     import subprocess
                     r = subprocess.Popen(fr'"C:\Program Files\Git\bin\bash.exe" -c "{full_command} &"')
                 
