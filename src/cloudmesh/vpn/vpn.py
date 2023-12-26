@@ -171,22 +171,25 @@ class Vpn:
         Args:
             choco (bool): If True, installs AnyConnect using Chocolatey. Defaults to False.
         """
-        if not os.path.isfile(self.anyconnect):
+        # if not os.path.isfile(self.anyconnect):
+        try:
+            Shell.run('openconnect -V')
+        except RuntimeError:
             if os_is_windows():
                 if choco is False:
-                    Console.error('Anyconnect not found. Please install, or use --choco parameter.')
+                    Console.error('OpenConnect not found. Please install, or use --choco parameter.')
                     os._exit(1)
                 else:
-                    Console.warning('Anyconnect not found. Installing anyconnect...')
+                    Console.warning('OpenConnect not found. Installing OpenConnect...')
                     win_install()
 
                     
-            if os_is_mac:
+            if os_is_mac():
                 if choco is False:
-                    Console.error('Anyonnect not found. Please install, or use --choco parameter.')
+                    Console.error('OpenConnect not found. Please install, or use --choco parameter.')
                     os._exit(1)
                 else:
-                    Console.warning('Anyconnect not found. Installing anyconnect...')
+                    Console.warning('OpenConnect not found. Installing OpenConnect...')
                     win_install()
                     Console.info("If your install was successful, please\nchange the System Preferences to allow Cisco,\n"
                                  "then run your previous command again (up-arrow + enter).")
