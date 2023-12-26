@@ -175,3 +175,50 @@ $ cms vpn disconnect
 This work was in part funded by the NSF
 CyberTraining: CIC: CyberTraining for Students and Technologies
 from Generation Z with the award numbers 1829704 and 2200409.
+
+
+
+## Manual Page
+
+<!-- START-MANUAL -->
+```
+Command vpn
+===========
+
+::
+
+  Usage:
+        vpn connect [--service=SERVICE] [--timeout=TIMEOUT] [-v] [--choco]
+        vpn disconnect [-v]
+        vpn status [-v]
+        vpn info
+
+  This command manages the vpn connection
+
+  Options:
+      -v       debug [default: False]
+      --choco  installs chocolatey [default: False]
+
+  Description:
+    vpn info
+       prints out information about your current location as
+       obtained via the vpn connection.
+
+    vpn status
+        prints out "True" if the vpn is connected
+        and "False" if it is not.
+
+    vpn disconnect
+        disconnects from the VPN.
+
+    vpn connect [--service=SERVICE]
+        connects to the UVA Anywhere VPN.
+
+        If the VPN is already connected a warning is shown.
+
+        You can connect to other VPNs while specifying their names
+        as given to you by the VPN provider with e service option.
+
+
+```
+<!-- STOP-MANUAL -->
