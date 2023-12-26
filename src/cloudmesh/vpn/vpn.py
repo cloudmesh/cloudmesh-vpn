@@ -171,22 +171,25 @@ class Vpn:
         Args:
             choco (bool): If True, installs AnyConnect using Chocolatey. Defaults to False.
         """
-        if not os.path.isfile(self.anyconnect):
+        # if not os.path.isfile(self.anyconnect):
+        try:
+            Shell.run('openconnect -V')
+        except RuntimeError:
             if os_is_windows():
                 if choco is False:
-                    Console.error('Anyconnect not found. Please install, or use --choco parameter.')
+                    Console.error('OpenConnect not found. Please install, or use --choco parameter.')
                     os._exit(1)
                 else:
-                    Console.warning('Anyconnect not found. Installing anyconnect...')
+                    Console.warning('OpenConnect not found. Installing OpenConnect...')
                     win_install()
 
                     
-            if os_is_mac:
+            if os_is_mac():
                 if choco is False:
-                    Console.error('Anyonnect not found. Please install, or use --choco parameter.')
+                    Console.error('OpenConnect not found. Please install, or use --choco parameter.')
                     os._exit(1)
                 else:
-                    Console.warning('Anyconnect not found. Installing anyconnect...')
+                    Console.warning('OpenConnect not found. Installing OpenConnect...')
                     win_install()
                     Console.info("If your install was successful, please\nchange the System Preferences to allow Cisco,\n"
                                  "then run your previous command again (up-arrow + enter).")
@@ -354,7 +357,7 @@ class Vpn:
             
             # full_command = rf'printf "{inner_command}" | "{self.anyconnect}" -s connect "{organizations[vpn_name]["host"]}"'
             script_location = os.path.join(os.path.dirname(__file__),  'bin', 'split-script-win.js')
-            full_command = rf'printf \"{inner_command}\" | \"{self.openconnect}\" -q --script=\"{script_location}\" \"{organizations[vpn_name]["host"]}\"'
+            full_command = rf'printf \"{inner_command}\" | \"{self.openconnect}\" --script=\"{script_location}\" \"{organizations[vpn_name]["host"]}\"'
             # print(mycommand)
             service_started = False
             while not service_started:
@@ -362,7 +365,7 @@ class Vpn:
                     Console.warning('It will ask you for your password,\n'
                                 'but it is already entered. Just confirm DUO.\n')
                     self.windows_stop_service()
-                    print(':)', fr'"C:\Program Files\Git\bin\bash.exe" -c "{full_command}"')
+                    # print(':)', fr'"C:\Program Files\Git\bin\bash.exe" -c "{full_command}"')
                     import subprocess
                     r = subprocess.Popen(fr'"C:\Program Files\Git\bin\bash.exe" -c "{full_command} &"')
                 

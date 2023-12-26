@@ -36,13 +36,13 @@ def win_install():
         status = Shell.install_chocolatey()
         if status is False:
             os._exit(1)
-        Console.msg('Installing cisco...')
+        Console.msg('Installing OpenConnect...')
         # try:
         #     r =
         # except subprocess.CalledProcessError as e:
 
-        command = f'cd {current_script_directory}/bin && choco install chocolatey-core.extension -y && choco pack && choco install cisco-secure-client --debug --verbose --source . --force -y'
-
+        # command = f'cd {current_script_directory}/bin && choco install chocolatey-core.extension -y && choco pack && choco install cisco-secure-client --debug --verbose --source . --force -y'
+        command = f'choco install openconnect --version=9.12.0.20231224'
         # try:
 
         #     r = Shell.run()
@@ -67,7 +67,7 @@ def win_install():
         # print(r)
         try:
             process = subprocess.Popen(
-                'vpncli',
+                'openconnect -V',
                 shell=True,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
@@ -88,10 +88,11 @@ def win_install():
         #     r =
         # except subprocess.CalledProcessError as e:
 
-        command = f'brew install --cask {current_script_directory}/bin/cisco-secure-client.rb'
+        # command = f'brew install --cask {current_script_directory}/bin/cisco-secure-client.rb'
+        command = f'brew install openconnect'
         # command = f'cd {current_script_directory}/bin ; ls'
         print(command)
-        Console.info("Cisco is now installing...")
+        Console.info("OpenConnect is now installing...")
         # try:
 
             # r = Shell.run()
