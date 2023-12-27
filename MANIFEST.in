@@ -3,4 +3,5 @@ include *.md
 include LICENSE
 include requirements.txt
 include requirements-dev.txt
-graft cloudmesh/vpn/bin
+include src/cloudmesh/vpn/bin/split-script-win.js
+exclude *egg-info
