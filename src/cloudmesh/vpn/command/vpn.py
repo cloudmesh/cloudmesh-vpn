@@ -55,6 +55,7 @@ class VpnCommand(PluginCommand):
                   debug=arguments["-v"])
 
         if arguments.connect:
+            print('I am connecting')
             vpn.anyconnect_checker(arguments['choco'])
             if arguments['service']:
                 service = arguments['service'].lower()

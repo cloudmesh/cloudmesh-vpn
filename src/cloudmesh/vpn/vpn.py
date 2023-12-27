@@ -29,6 +29,12 @@ organizations = {'ufl': {"auth": "pw",
                  'uva': {"auth": "cert",
                          "name": "UVA Anywhere",
                          "host": "uva-anywhere-1.itc.virginia.edu",
+                        # UVA Anywhere Primary VPN Concentrator: https://uva-anywhere-1.itc.virginia.edu/
+                        # UVA Anywhere Secondary VPN Concentrator: https://uva-anywhere-2.itc.virginia.edu/
+                        # More Secure Network Primary VPN Concentrator: https://moresecure-vpn-1.itc.virginia.edu/
+                        # More Secure Network Secondary VPN Concentrator: https://moresecure-vpn-2.itc.virginia.edu/
+                        # High Security VPN Primary VPN Concentrator: https://joint-vpn-1.itc.virginia.edu/
+                        # High Security VPN Secondary VPN Concentrator: https://joint-vpn-2.itc.virginia.edu/
                          "user": False,
                          "2fa": False,
                          "group": False},
@@ -355,8 +361,12 @@ class Vpn:
                 # inner_command = rf'\n{creds["user"]}\n{creds["pw"]}\npush\ny'
                 inner_command = rf'\n' + inner_command
             
+            print("Is it running this?")
             # full_command = rf'printf "{inner_command}" | "{self.anyconnect}" -s connect "{organizations[vpn_name]["host"]}"'
             script_location = os.path.join(os.path.dirname(__file__),  'bin', 'split-script-win.js')
+            script_location = os.path.expanduser('~/cm/cloudmesh-vpn/src/cloudmesh/vpn/bin/split-script-win.js')
+            print('this is ccsript location', script_location)
+
             full_command = rf'printf \"{inner_command}\" | \"{self.openconnect}\" --script=\"{script_location}\" \"{organizations[vpn_name]["host"]}\"'
             # print(mycommand)
             service_started = False
@@ -600,8 +610,10 @@ class Vpn:
             home = os.environ["HOME"]
 
             if not self.is_docker():
+                print('here you are')
                 from cloudmesh.common.sudo import Sudo
 
+                
                 Sudo.password()
                 command = 'sudo openconnect -b -v ' \
                       '--protocol=anyconnect ' \
@@ -609,7 +621,10 @@ class Vpn:
                       f'--sslkey="{home}/.ssh/uva/user.key" ' \
                       f'--certificate="{home}/.ssh/uva/user.crt" ' \
                       'uva-anywhere-1.itc.virginia.edu  2>&1 > /dev/null'
+                print(command)
+                print('that was th ecommand')
             else:
+                # if docker
                 command = 'openconnect -b -v ' \
                       '--protocol=anyconnect ' \
                       f'--cafile="/root/.ssh/uva/usher.cer" ' \
