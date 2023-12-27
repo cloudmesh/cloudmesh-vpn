@@ -361,10 +361,9 @@ class Vpn:
                 # inner_command = rf'\n{creds["user"]}\n{creds["pw"]}\npush\ny'
                 inner_command = rf'\n' + inner_command
             
-            print("Is it running this?")
             # full_command = rf'printf "{inner_command}" | "{self.anyconnect}" -s connect "{organizations[vpn_name]["host"]}"'
             script_location = os.path.join(os.path.dirname(__file__),  'bin', 'split-script-win.js')
-            script_location = os.path.expanduser('~/cm/cloudmesh-vpn/src/cloudmesh/vpn/bin/split-script-win.js')
+            # script_location = os.path.expanduser('~/cm/cloudmesh-vpn/src/cloudmesh/vpn/bin/split-script-win.js')
             print('this is ccsript location', script_location)
 
             full_command = rf'printf \"{inner_command}\" | \"{self.openconnect}\" --script=\"{script_location}\" \"{organizations[vpn_name]["host"]}\"'
