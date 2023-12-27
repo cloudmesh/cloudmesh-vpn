@@ -42,7 +42,7 @@ def win_install():
         # except subprocess.CalledProcessError as e:
 
         # command = f'cd {current_script_directory}/bin && choco install chocolatey-core.extension -y && choco pack && choco install cisco-secure-client --debug --verbose --source . --force -y'
-        command = f'choco install openconnect --version=9.12.0.20231224'
+        command = f'choco install openconnect --version=9.12.0.20231224 -y'
         # try:
 
         #     r = Shell.run()
