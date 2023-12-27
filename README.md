@@ -1,4 +1,4 @@
-# cms vpn
+# cloudmesh-vpn
 
 ## Organizations
 
@@ -23,25 +23,17 @@
 
 ### Windows
 
-Open powershell as administrator.
+Open any terminal (git bash, cmd, powershell) as administrator.
 
-Execute these commands:
+Python 3.12 is recommended, which can be
+[downloaded from the Python website.](https://www.python.org/downloads/) Your Python version can be checked
+with the command `python -V`
 
-```bash
-python --version
-```
-
-If no number shows up, then you do not have Python. Download it from https://www.python.org/downloads/ and check `Add python.exe to PATH` in the installer.
-
-If Python was just installed, open a new powershell as administrator.
-Either way, execute:
+Once confirming Python, execute:
 
 ```bash
-mkdir ~/cm & cd ~/cm
-pip install cloudmesh-installer
-cloudmesh-installer get vpn
+pip install cloudmesh-vpn
 ```
-
 
 ## Usage
 
@@ -57,6 +49,12 @@ For other organizations, the `--service` flag can be used:
 cms vpn connect --service=ufl
 # possible services are uva fiu ufl
 ```
+
+Note- currently the output will be piped to the terminal
+and will end in response to `Ctrl + C`
+consider executing the following:
+
+`nohup cms vpn connect --service=ufl >/dev/null 2>&1`
 
 To disconnect from current VPN, run
 
