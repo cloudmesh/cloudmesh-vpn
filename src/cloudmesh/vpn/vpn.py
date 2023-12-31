@@ -375,12 +375,46 @@ class Vpn:
                                 'but it is already entered. Just confirm DUO.\n')
                     self.windows_stop_service()
                     # print(':)', fr'"C:\Program Files\Git\bin\bash.exe" -c "{full_command}"')
-                    import subprocess
-                    r = subprocess.Popen(fr'"C:\Program Files\Git\bin\bash.exe" -c "{full_command} &"')
-                
+                    
+                    r = subprocess.run(fr'"C:\Program Files\Git\bin\bash.exe" -c "{full_command} &"')
                 
                     service_started = True
                     return True
+                
+                                
+                elif organizations[vpn_name]["auth"] == "cert":
+
+                    try:
+                        r = Shell.run("list-system-keys")
+                    except RuntimeError:
+                        Console.error("You do not have the special chocolatey openconnect package,"
+                                      "why don't you run choco install openconnect --version=9.12.0.20231231")
+                        return False
+
+                    rightful_index = 0
+                    almighty_cert = False
+                    # iterate through r for a line that has University of Virginia in it
+                    for index, line in enumerate(r.splitlines()):
+                        if 'University of Virginia' in line:
+                            # i dont like magic numbers
+                            rightful_index = index - 2
+
+                            almighty_cert = r.splitlines()[rightful_index].split('Cert URI: ')[-1].replace(';', r'\;')
+                    
+                    if almighty_cert:
+                        
+                        full_command = rf'{self.openconnect} --certificate={almighty_cert} {organizations[vpn_name]["host"]}'
+                        self.windows_stop_service()
+                        # print(':)', fr'"C:\Program Files\Git\bin\bash.exe" -c "{full_command}"')
+                        r = subprocess.run(fr'"C:\Program Files\Git\bin\bash.exe" -c "{full_command} &"')
+                    
+                        service_started = True
+                        return True
+            
+                    else:
+                        Console.error("Something went wrong with the list-system-keys parsing")
+                        return False
+
 
                 r = pexpect.popen_spawn.PopenSpawn(mycommand, logfile=sys.stdout.buffer)
                 r.timeout = 25
