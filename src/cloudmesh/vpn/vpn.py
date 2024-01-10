@@ -29,6 +29,12 @@ organizations = {'ufl': {"auth": "pw",
                  'uva': {"auth": "cert",
                          "name": "UVA Anywhere",
                          "host": "uva-anywhere-1.itc.virginia.edu",
+                        # UVA Anywhere Primary VPN Concentrator: https://uva-anywhere-1.itc.virginia.edu/
+                        # UVA Anywhere Secondary VPN Concentrator: https://uva-anywhere-2.itc.virginia.edu/
+                        # More Secure Network Primary VPN Concentrator: https://moresecure-vpn-1.itc.virginia.edu/
+                        # More Secure Network Secondary VPN Concentrator: https://moresecure-vpn-2.itc.virginia.edu/
+                        # High Security VPN Primary VPN Concentrator: https://joint-vpn-1.itc.virginia.edu/
+                        # High Security VPN Secondary VPN Concentrator: https://joint-vpn-2.itc.virginia.edu/
                          "user": False,
                          "2fa": False,
                          "group": False},
@@ -357,6 +363,9 @@ class Vpn:
             
             # full_command = rf'printf "{inner_command}" | "{self.anyconnect}" -s connect "{organizations[vpn_name]["host"]}"'
             script_location = os.path.join(os.path.dirname(__file__),  'bin', 'split-script-win.js')
+            # script_location = os.path.expanduser('~/cm/cloudmesh-vpn/src/cloudmesh/vpn/bin/split-script-win.js')
+            print('this is ccsript location', script_location)
+
             full_command = rf'printf \"{inner_command}\" | \"{self.openconnect}\" --script=\"{script_location}\" \"{organizations[vpn_name]["host"]}\"'
             # print(mycommand)
             service_started = False
@@ -366,12 +375,46 @@ class Vpn:
                                 'but it is already entered. Just confirm DUO.\n')
                     self.windows_stop_service()
                     # print(':)', fr'"C:\Program Files\Git\bin\bash.exe" -c "{full_command}"')
-                    import subprocess
-                    r = subprocess.Popen(fr'"C:\Program Files\Git\bin\bash.exe" -c "{full_command} &"')
-                
+                    
+                    r = subprocess.run(fr'"C:\Program Files\Git\bin\bash.exe" -c "{full_command} &"')
                 
                     service_started = True
                     return True
+                
+                                
+                elif organizations[vpn_name]["auth"] == "cert":
+
+                    try:
+                        r = Shell.run("list-system-keys")
+                    except RuntimeError:
+                        Console.error("You do not have the special chocolatey openconnect package,"
+                                      "why don't you run choco install openconnect --version=9.12.0.20231231")
+                        return False
+
+                    rightful_index = 0
+                    almighty_cert = False
+                    # iterate through r for a line that has University of Virginia in it
+                    for index, line in enumerate(r.splitlines()):
+                        if 'University of Virginia' in line:
+                            # i dont like magic numbers
+                            rightful_index = index - 2
+
+                            almighty_cert = r.splitlines()[rightful_index].split('Cert URI: ')[-1].replace(';', r'\;')
+                    
+                    if almighty_cert:
+                        
+                        full_command = rf'{self.openconnect} --certificate={almighty_cert} {organizations[vpn_name]["host"]}'
+                        self.windows_stop_service()
+                        # print(':)', fr'"C:\Program Files\Git\bin\bash.exe" -c "{full_command}"')
+                        r = subprocess.run(fr'"C:\Program Files\Git\bin\bash.exe" -c "{full_command} &"')
+                    
+                        service_started = True
+                        return True
+            
+                    else:
+                        Console.error("Something went wrong with the list-system-keys parsing")
+                        return False
+
 
                 r = pexpect.popen_spawn.PopenSpawn(mycommand, logfile=sys.stdout.buffer)
                 r.timeout = 25
@@ -600,8 +643,10 @@ class Vpn:
             home = os.environ["HOME"]
 
             if not self.is_docker():
+                print('here you are')
                 from cloudmesh.common.sudo import Sudo
 
+                
                 Sudo.password()
                 command = 'sudo openconnect -b -v ' \
                       '--protocol=anyconnect ' \
@@ -609,7 +654,10 @@ class Vpn:
                       f'--sslkey="{home}/.ssh/uva/user.key" ' \
                       f'--certificate="{home}/.ssh/uva/user.crt" ' \
                       'uva-anywhere-1.itc.virginia.edu  2>&1 > /dev/null'
+                print(command)
+                print('that was th ecommand')
             else:
+                # if docker
                 command = 'openconnect -b -v ' \
                       '--protocol=anyconnect ' \
                       f'--cafile="/root/.ssh/uva/usher.cer" ' \
