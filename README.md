@@ -19,6 +19,18 @@
 * olemiss
 * sc
 
+| School  | Tested | Untested | VPN-Slicing         |
+| ------- | ------ | -------- | ------------------- |
+| UVA     | ✅      | ❌        | ❌               |
+| FIU     | ✅      | ❌        | ❌               |
+| UFL     | ✅      | ❌        | ✅               |
+| FAMU    | ❌      | ✅        | ❌               |
+| NYU     | ❌      | ✅        | ❌               |
+| UCI     | ❌      | ✅        | ❌               |
+| GMU     | ❌      | ✅        | ❌               |
+| OleMiss | ❌      | ✅        | ❌               |
+| SC      | ❌      | ✅        | ❌               |
+
 ## Install
 
 ### Windows
