@@ -48,8 +48,9 @@ function run(cmd) {
 }
 
 function getDefaultGateway() {
-    if (run("route print").match(/0\.0\.0\.0 *(0|128)\.0\.0\.0 *([0-9\.]*)/)) {
-        return (RegExp.$2);
+    var match = /0\.0\.0\.0 *(0|128)\.0\.0\.0 *([0-9\.]*)/.exec(run("route print"));
+    if (match) {
+        return match[2]; // match[2] is equivalent to RegExp.$2
     }
     return ("");
 }
@@ -120,7 +121,12 @@ switch (env("reason")) {
 
         // Add direct route for the VPN gateway to avoid routing loops
         // FIXME: handle IPv6 gateway address
-        run("route add " + env("VPNGATEWAY") + " mask 255.255.255.255 " + gw);
+        if (String(env("VPNGATEWAY")).indexOf(":") > -1) { // Check if the gateway address is IPv6
+            echo("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+            run("netsh interface ipv6 add route " + env("VPNGATEWAY") + "/128 \"" + env("TUNIDX") + "\"");
+        } else {
+            run("route add " + env("VPNGATEWAY") + " mask 255.255.255.255 " + gw);
+        }
 
         run("netsh interface ipv4 del wins " + env("TUNIDX") + " all");
         if (env("INTERNAL_IP4_NBNS")) {
@@ -132,16 +138,16 @@ switch (env("reason")) {
         }
 
         run("netsh interface ipv4 del dns " + env("TUNIDX") + " all");
-        // run("netsh interface ipv6 del dns " + env("TUNIDX") + " all");
-        // if (env("INTERNAL_IP4_DNS")) {
-        //     var dns = env("INTERNAL_IP4_DNS").split(/ /);
-        //     for (var i = 0; i < dns.length; i++) {
-        //         var protocol = dns[i].indexOf(":") !== -1 ? "ipv6" : "ipv4";
-        //         run("netsh interface " + protocol + " add dns " + env("TUNIDX") + " " + dns[i]);
-        //     }
-        //     echo("Configured " + dns.length + " DNS servers: " + dns.join(" "));
-        // }
-        // echo("done.");
+        run("netsh interface ipv6 del dns " + env("TUNIDX") + " all");
+        if (env("INTERNAL_IP4_DNS")) {
+            var dns = env("INTERNAL_IP4_DNS").split(/ /);
+            for (var i = 0; i < dns.length; i++) {
+                var protocol = dns[i].indexOf(":") !== -1 ? "ipv6" : "ipv4";
+                run("netsh interface " + protocol + " add dns " + env("TUNIDX") + " " + dns[i]);
+            }
+            echo("Configured " + dns.length + " DNS servers: " + dns.join(" "));
+        }
+        echo("done.");
 
         // Add internal network routes
         echo("Configuring Legacy IP networks:");
@@ -202,6 +208,16 @@ switch (env("reason")) {
             }
 
             // FIXME: handle IPv6 split-excludes
+            // FIXME: handle IPv6 split-excludes
+            if (env("CISCO_IPV6_SPLIT_EXC")) {
+                for (var i = 0; i < parseInt(env("CISCO_IPV6_SPLIT_EXC")); i++) {
+                    var network = env("CISCO_IPV6_SPLIT_EXC_" + i + "_ADDR");
+                    var netmasklen = env("CISCO_IPV6_SPLIT_EXC_" + i + "_MASKLEN");
+                    run("netsh interface ipv6 add route " + network + "/" +
+                        netmasklen + " " + env("TUNIDX") + " store=active")
+                    echo("Configured IPv6 split-exclude route: " + network + "/" + netmasklen);
+                }
+            }
 
             echo("IPv6 route configuration done.");
         }
