@@ -55,7 +55,7 @@ organizations = {'ufl': {"auth": "pw",
                          "host": "vpn.nyu.edu",
                          "user": True,
                          "2fa": True,
-                         "group": True},
+                         "group": "NYU VPN: NYU-NET Traffic Only"},
                  'uci': {"auth": "pw",
                          "name": "vpn.uci.edu",
                          "host": "vpn.uci.edu",
@@ -326,48 +326,61 @@ class Vpn:
 
         # args[0] is dict with
         # keys named user, pw, and service.
+
+        # temporarily commented to allow for dual
         
-        if self.enabled():
-            Console.ok("VPN is already activated")
-            return ""
+        # if self.enabled():
+            # Console.ok("VPN is already activated")
+            # return ""
 
         if args:
             creds = args[0]
+            no_split = args[0]['nosplit']
             vpn_name = creds['service']
         else:
+            creds = False
+            no_split = True
             vpn_name = 'uva'
-            
-
+                        
         if os_is_windows():
             if not pyuac.isUserAdmin():
                 pyuac.runAsAdmin()
 
             # mycommand = rf'{self.anyconnect} {organizations[vpn_name]["host"]} --os=win --protocol=anyconnect --user={creds["user"]} --passwd-on-stdin'
-            
-            inner_command = ""
+            if creds:
+                base = f'{creds["user"]}\n{creds["pw"]}'            
+                inner_command = base
 
-            if not organizations[vpn_name]["user"]:
-                # mycommand = rf'{self.anyconnect} connect "{organizations[vpn_name]["host"]}"'
-                mycommand = rf'{self.openconnect} "{organizations[vpn_name]["host"]}"'
-                
+                if organizations[vpn_name]["group"]:
+
+                    ### nyu
+                    if no_split:
+                        organizations["nyu"]["group"] = "NYU VPN: All Traffic"
+                    ###
+
+                    # inner_command = rf'\n{creds["user"]}\n{creds["pw"]}\npush\ny'
+                    inner_command = organizations[vpn_name]["group"] + '\n' + inner_command
+                if organizations[vpn_name]["2fa"]:
+                    inner_command += '\npush\n'
+                if organizations[vpn_name].get("pw_concat", False):
+                    inner_command = f'\n{creds["pw"]},push\ny'
+
             else:
-                # full_command = rf'{self.openconnect} {organizations[vpn_name]["host"]} --os=win --protocol=anyconnect --user={creds["user"]}'
-                inner_command = rf'{creds["user"]}\n{creds["pw"]}\ny'
-            if organizations[vpn_name]["2fa"]:
-                inner_command = rf'{creds["user"]}\n{creds["pw"]}\npush\ny'
-            if organizations[vpn_name].get("pw_concat", False):
-                inner_command = rf'{creds["user"]}\n{creds["pw"]}\n{creds["pw"]},push\ny'
-            if organizations[vpn_name]["group"]:
-                # inner_command = rf'\n{creds["user"]}\n{creds["pw"]}\npush\ny'
-                inner_command = rf'\n' + inner_command
+                inner_command = ""
+
+
             
             # full_command = rf'printf "{inner_command}" | "{self.anyconnect}" -s connect "{organizations[vpn_name]["host"]}"'
-            script_location = os.path.join(os.path.dirname(__file__),  'bin', 'split-script-win.js')
-            # script_location = os.path.expanduser('~/cm/cloudmesh-vpn/src/cloudmesh/vpn/bin/split-script-win.js')
-            print('this is ccsript location', script_location)
+            # script_location = os.path.join(os.path.dirname(__file__),  'bin', 'split-script-win.js')
+            script_location = os.path.abspath(os.path.expanduser('~/cm/cloudmesh-vpn/src/cloudmesh/vpn/bin/split-script-win.js')).replace(os.sep, '/')
+            print('this is script location', script_location)
 
-            full_command = rf'printf \"{inner_command}\" | \"{self.openconnect}\" --script=\"{script_location}\" \"{organizations[vpn_name]["host"]}\"'
-            # print(mycommand)
+            
+            if no_split:
+                full_command = rf'printf \"{inner_command}\" | \"{self.openconnect}\" \"{organizations[vpn_name]["host"]}\"'
+            else:
+                full_command = rf'printf \"{inner_command}\" | \"{self.openconnect}\" --script=\"{script_location}\" \"{organizations[vpn_name]["host"]}\"'
+            # print(full_command)
             service_started = False
             while not service_started:
                 if organizations[vpn_name]["user"] is True:
@@ -383,12 +396,12 @@ class Vpn:
                 
                                 
                 elif organizations[vpn_name]["auth"] == "cert":
-
                     try:
                         r = Shell.run("list-system-keys")
                     except RuntimeError:
-                        Console.error("You do not have the special chocolatey openconnect package,"
-                                      "why don't you run choco install openconnect --version=9.12.0.20231231")
+                        Console.error("You do not have the special chocolatey openconnect package, "
+                                    "why don't you run choco uninstall openconnect -y, then "
+                                    "choco install openconnect -y\nThen try the command again.")
                         return False
 
                     rightful_index = 0
@@ -403,7 +416,8 @@ class Vpn:
                     
                     if almighty_cert:
                         
-                        full_command = rf'{self.openconnect} --certificate={almighty_cert} {organizations[vpn_name]["host"]}'
+                        full_command = rf'{self.openconnect} --certificate={almighty_cert} ' \
+                                    rf'{organizations[vpn_name]["host"]}'
                         self.windows_stop_service()
                         # print(':)', fr'"C:\Program Files\Git\bin\bash.exe" -c "{full_command}"')
                         r = subprocess.run(fr'"C:\Program Files\Git\bin\bash.exe" -c "{full_command} &"')
@@ -412,7 +426,7 @@ class Vpn:
                         return True
             
                     else:
-                        Console.error("Something went wrong with the list-system-keys parsing")
+                        Console.error("Something went wrong with the list-system-keys parsing\nmaybe you need to install certificate?")
                         return False
 
 
