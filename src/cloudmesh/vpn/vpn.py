@@ -258,20 +258,21 @@ class Vpn:
         state = False
         result = ""
         if os_is_windows():
-            r = str(subprocess.run(f"{self.anyconnect} state",
-                                    capture_output=True,
-                                    text=True))
+            # r = str(subprocess.run(f"{self.anyconnect} state",
+            #                         capture_output=True,
+            #                         text=True))
             
-            state = 'state: Connected' in r
-            # result = Shell.run("route print").strip()
-            # state = "Cisco AnyConnect" in result
-            if state is True:
-                self.any = True
-            if state is False:
-                process_name = "openconnect.exe"  # Adjust as needed
-                for process in psutil.process_iter(attrs=['name']):
-                    if process.info['name'] == process_name:
-                        state = True
+            # state = 'state: Connected' in r
+            # # result = Shell.run("route print").strip()
+            # # state = "Cisco AnyConnect" in result
+            # if state is True:
+            #     self.any = True
+            # if state is False:
+            self.any = False
+            process_name = "openconnect.exe"  # Adjust as needed
+            for process in psutil.process_iter(attrs=['name']):
+                if process.info['name'] == process_name:
+                    state = True
 
         elif os_is_mac():
             command = f'echo state | {self.anyconnect} -s'
