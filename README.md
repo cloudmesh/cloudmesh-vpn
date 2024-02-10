@@ -6,7 +6,7 @@
 | FIU&nbsp; <img src="https://brand.fiu.edu/_assets/images/fiu-alone.png" alt="fiu" height="15"/> | ✅ | ❌ |
 | UFL&nbsp; <img src="https://www.ufl.edu/wp-content/uploads/sites/5/2022/12/UF-logo-500x500-1.png" alt="uf" height="15"/> | ✅ | ✅ |
 | FAMU | ❌ | ❌ |
-| NYU | ❌ | ❌ |
+| NYU | ✅ | ❌ |
 | UCI | ❌ | ❌ |
 | GMU | ❌ | ❌ |
 | OleMiss | ❌ | ❌ |
