@@ -345,7 +345,8 @@ class Vpn:
                         
         if os_is_windows():
             if not pyuac.isUserAdmin():
-                pyuac.runAsAdmin()
+                Console.error("Please run your terminal as administrator")
+                sys.exit(1)
 
             # mycommand = rf'{self.anyconnect} {organizations[vpn_name]["host"]} --os=win --protocol=anyconnect --user={creds["user"]} --passwd-on-stdin'
             if creds:
@@ -372,8 +373,8 @@ class Vpn:
 
             
             # full_command = rf'printf "{inner_command}" | "{self.anyconnect}" -s connect "{organizations[vpn_name]["host"]}"'
-            # script_location = os.path.join(os.path.dirname(__file__),  'bin', 'split-script-win.js')
-            script_location = os.path.abspath(os.path.expanduser('~/cm/cloudmesh-vpn/src/cloudmesh/vpn/bin/split-script-win.js')).replace(os.sep, '/')
+            script_location = os.path.join(os.path.dirname(__file__),  'bin', 'split-script-win.js')
+            # script_location = os.path.abspath(os.path.expanduser('~/cm/cloudmesh-vpn/src/cloudmesh/vpn/bin/split-script-win.js')).replace(os.sep, '/')
             print('this is script location', script_location)
 
             
