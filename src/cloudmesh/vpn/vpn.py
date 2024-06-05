@@ -16,6 +16,9 @@ from cloudmesh.common.systeminfo import os_is_windows
 
 from cloudmesh.vpn.windows import win_install
 
+import keyring as kr
+
+
 if os_is_windows():
     import pyuac
 
@@ -379,9 +382,9 @@ class Vpn:
 
             
             if no_split:
-                full_command = rf'printf \"{inner_command}\" | \"{self.openconnect}\" \"{organizations[vpn_name]["host"]}\"'
+                full_command = f'printf \"{inner_command}\" | "{self.openconnect}" "{organizations[vpn_name]["host"]}"'
             else:
-                full_command = rf'printf \"{inner_command}\" | \"{self.openconnect}\" --script=\"{script_location}\" \"{organizations[vpn_name]["host"]}\"'
+                full_command = f'printf \"{inner_command}\" | "{self.openconnect}" --script="{script_location}" "{organizations[vpn_name]["host"]}"'
             # print(full_command)
             service_started = False
             while not service_started:
@@ -391,7 +394,18 @@ class Vpn:
                     self.windows_stop_service()
                     # print(':)', fr'"C:\Program Files\Git\bin\bash.exe" -c "{full_command}"')
                     
-                    r = subprocess.run(fr'"C:\Program Files\Git\bin\bash.exe" -c "{full_command} &"')
+                    # r = subprocess.run(fr'"C:\Program Files\Git\bin\bash.exe" -c "{full_command} &"')
+                    process = subprocess.Popen(['openconnect', 
+                                organizations[vpn_name]["host"], 
+                                f'--user={creds["user"]}', 
+                                f'--script="{script_location}"', 
+                                '--passwd-on-stdin'],
+                               stdin=subprocess.PIPE,
+                               start_new_session=True)
+
+                    # Send the password to the openconnect command
+                    process.stdin.write(creds['pw'].encode('utf-8') + b'\n')
+                    process.stdin.flush()
                 
                     service_started = True
                     return True
@@ -800,5 +814,19 @@ class Vpn:
                 return kr.get_password(org, "cloudmesh-user"), kr.get_password(org, "cloudmesh-pw")
                     
                 # print(kr.get_password(org, "cloudmesh"))
+
+    def pw_clearer(self,
+                    org):
+        """Clears the stored credentials for the specified organization.
+
+        Args:
+            org (str): The organization name.
+        """
+        if org not in organizations:
+            Console.error(f'Unknown service {org}')
+            return False
+        kr.delete_password(org, "cloudmesh-pw")
+        kr.delete_password(org, "cloudmesh-user")
+        Console.ok(f'Credentials for {org} have been cleared.')
                 
 

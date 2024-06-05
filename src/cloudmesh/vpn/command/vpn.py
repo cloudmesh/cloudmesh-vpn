@@ -17,6 +17,7 @@ class VpnCommand(PluginCommand):
                 vpn disconnect [-v]
                 vpn status [-v]
                 vpn info
+                vpn reset [--service=SERVICE]
 
           This command manages the vpn connection
 
@@ -43,6 +44,9 @@ class VpnCommand(PluginCommand):
 
                 You can connect to other VPNs while specifying their names
                 as given to you by the VPN provider with e service option.
+
+            vpn reset [--service=SERVICE]
+                clears the credentials for the VPN service
 
 
         """
@@ -98,6 +102,12 @@ class VpnCommand(PluginCommand):
 
         elif arguments.info:
             print(vpn.info())
+
+        elif arguments.reset:
+            if not arguments['service']:
+                Console.error("Please specify a service to clear its credentials")
+                return
+            vpn.pw_clearer(arguments['service'])
 
         # elif arguments.install:
         #     found = Shell.which("openconnect")
