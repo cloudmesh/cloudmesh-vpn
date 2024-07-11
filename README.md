@@ -61,17 +61,23 @@ To see info regarding your connection, run
 cms vpn info
 ```
 
-## Linux
+## Linux and macOS
 
 ### Requirements
 
-On Linux we use the command `openconnect`. To check if it is available please use
+We use the command `openconnect`. To check if it is available please use
 
 ```bash
 $ which openconnect
 ```
 
-If it is not available, you can install it un Ubuntu with 
+If it is not available, on macOS do:
+
+```bash
+brew install openconnect
+```
+
+you can install it on Ubuntu with 
 
 ```bash
 $ sudo apt install openssl
@@ -143,12 +149,6 @@ $ cms help
 
 To connect use 
 
-
-```bash
-$ cms vpn connect 
-```
-
-To show the status use
 
 ```bash
 $ cms vpn connect 
