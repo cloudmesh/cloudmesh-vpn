@@ -3,6 +3,7 @@ cloudmesh-sys
 cloudmesh-inventory
 cloudmesh-configuration
 keyring
+pn-slice
 pexpect
 pytest
 vpn-slice; platform_system != "Windows"

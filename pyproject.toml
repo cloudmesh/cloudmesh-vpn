@@ -53,10 +53,10 @@ classifiers = [
 
 dependencies = [
     "cloudmesh-cmd5",
-    "cloudmesh-cmd5",
     "cloudmesh-sys",
     "cloudmesh-inventory",
     "cloudmesh-configuration",
+    "vpn-slice",
     "keyring",
     "pexpect",
     "pytest",
