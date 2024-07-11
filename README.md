@@ -125,8 +125,8 @@ Now convert the keys and certificates with the following commands
 
 ```bash
 cd ~/.ssh/uva
-openssl pkcs12 -in mst3k.p12 -nocerts -nodes -out mst3k.key
-openssl pkcs12 -in mst3k.p12 -clcerts -nokeys -out mst3k.crt
+openssl pkcs12 -in user.p12 -nocerts -nodes -out mst3k.key
+openssl pkcs12 -in user.p12 -clcerts -nokeys -out mst3k.crt
 openssl x509 -inform DER -in usher.cer -out usher.crt
 ```
 
