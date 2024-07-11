@@ -3,5 +3,6 @@ cloudmesh-sys
 cloudmesh-inventory
 cloudmesh-configuration
 keyring
+pn-slice
 pexpect
 pytest
