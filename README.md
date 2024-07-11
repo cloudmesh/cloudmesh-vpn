@@ -106,7 +106,8 @@ we place all certificates into ~/.ssh/uva
 mkdir -p ~/.ssh/uva
 # You will receive a file ending in .p12. In this example we will assume it is named mst3k.p12.
 cd ~/.ssh/uva
-wget https://download.its.virginia.edu/local-auth/universal/usher.cer
+# wget https://download.its.virginia.edu/local-auth/universal/usher.cer
+wget --no-check-certificate https://download.its.virginia.edu/local-auth/universal/usher.cer
 ```
 
 To get a certificate for your device, go to 
