@@ -787,6 +787,7 @@ class Vpn:
             from cloudmesh.common.sudo import Sudo
             Sudo.password()
             command = f'sudo pkill -SIGINT openconnect &> /dev/null'
+            result = Shell.run(command)
 
         elif os_is_linux():
             if not self.is_docker():
