@@ -545,7 +545,7 @@ class Vpn:
                 '-s', 'vpn-slice rivanna.hpc.virginia.edu'
             ]
 
-            process = subprocess.Popen(command, stdin=subprocess.PIPE, start_new_session=True)
+            process = subprocess.Popen(command)
 
             return
         
@@ -779,8 +779,12 @@ class Vpn:
                         pass
 
         elif os_is_mac():
-            command = f'{self.anyconnect} disconnect "{self.service}"'
-            result = Shell.run(command)
+            # command = f'{self.anyconnect} disconnect "{self.service}"'
+            # result = Shell.run(command)
+            from cloudmesh.common.sudo import Sudo
+            Sudo.password()
+            command = f'sudo pkill -SIGINT openconnect &> /dev/null'
+
         elif os_is_linux():
             if not self.is_docker():
                 from cloudmesh.common.sudo import Sudo
