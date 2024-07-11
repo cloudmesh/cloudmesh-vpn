@@ -531,7 +531,11 @@ class Vpn:
 
             from cloudmesh.common.sudo import Sudo
             Sudo.password()
-            Shell.run('sudo openconnect -b -v --protocol=anyconnect --cafile=~/.ssh/uva/usher.cer --sslkey=~/.ssh/uva/mst3k.key --certificate=~/.ssh/uva/mst3k.crt uva-anywhere-1.itc.virginia.edu -s "vpn-slice rivanna.hpc.virginia.edu"')
+
+            full_uva = path_expand('~/.ssh/uva')
+            if not full_uva[-1] == '/':
+                full_uva += '/'
+            Shell.run(f'sudo openconnect -b -v --protocol=anyconnect --cafile={full_uva}usher.cer --sslkey={full_uva}mst3k.key --certificate={full_uva}mst3k.crt uva-anywhere-1.itc.virginia.edu -s "vpn-slice rivanna.hpc.virginia.edu"')
             return
         
             # redone
