@@ -56,7 +56,7 @@ dependencies = [
     "cloudmesh-sys",
     "cloudmesh-inventory",
     "cloudmesh-configuration",
-    "vpn-slice",
+    'vpn-slice ; platform_system != "Windows"',
     "keyring",
     "pexpect",
     "pytest",
