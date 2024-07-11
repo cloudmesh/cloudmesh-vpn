@@ -103,7 +103,8 @@ At UVA you find the certificate and other documentation at
 we place all certificates into ~/.ssh/uva
 
 ```
-mkdir -p You will receive a file ending in .p12. In this example we will assume it is named mst3k.p12.
+mkdir -p ~/.ssh/uva
+# You will receive a file ending in .p12. In this example we will assume it is named mst3k.p12.
 cd ~/.ssh/uva
 wget https://download.its.virginia.edu/local-auth/universal/usher.cer
 ```
