@@ -535,7 +535,18 @@ class Vpn:
             full_uva = path_expand('~/.ssh/uva')
             if not full_uva[-1] == '/':
                 full_uva += '/'
-            Shell.run(f'sudo openconnect -b -v --protocol=anyconnect --cafile={full_uva}usher.cer --sslkey={full_uva}mst3k.key --certificate={full_uva}mst3k.crt uva-anywhere-1.itc.virginia.edu -s "vpn-slice rivanna.hpc.virginia.edu"')
+            
+            command = [
+                'sudo', 'openconnect', '-b', '-v', '--protocol=anyconnect',
+                f'--cafile={full_uva}usher.cer',
+                f'--sslkey={full_uva}mst3k.key',
+                f'--certificate={full_uva}mst3k.crt',
+                'uva-anywhere-1.itc.virginia.edu',
+                '-s', 'vpn-slice rivanna.hpc.virginia.edu'
+            ]
+
+            process = subprocess.Popen(command, stdin=subprocess.PIPE, start_new_session=True)
+
             return
         
             # redone
