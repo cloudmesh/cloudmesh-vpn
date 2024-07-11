@@ -10,6 +10,7 @@ import subprocess
 
 from cloudmesh.common.Shell import Shell
 from cloudmesh.common.Shell import Console
+from cloudmesh.common.util import path_expand
 from cloudmesh.common.systeminfo import os_is_linux
 from cloudmesh.common.systeminfo import os_is_mac
 from cloudmesh.common.systeminfo import os_is_windows
@@ -519,6 +520,24 @@ class Vpn:
                         r.sendline(creds['pw'])
                         
         elif os_is_mac():
+
+            # redone
+            # redone
+            # redone
+
+            if not os.path.isdir(path_expand('~/.ssh/uva')) or not os.path.isfile(path_expand('~/.ssh/uva/mst3k.key')):
+                print("Please follow the instructions at https://github.com/cloudmesh/cloudmesh-vpn#linux")
+                quit(1)
+
+            from cloudmesh.common.sudo import Sudo
+            Sudo.password()
+            Shell.run('sudo openconnect -b -v --protocol=anyconnect --cafile=usher.cer --sslkey=mst3k.key --certificate=mst3k.crt uva-anywhere-1.itc.virginia.edu -s "vpn-slice rivanna.hpc.virginia.edu"')
+            return
+        
+            # redone
+            # redone
+            # redone
+        
 
             inner_command = ""
 
