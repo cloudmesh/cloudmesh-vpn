@@ -279,9 +279,12 @@ class Vpn:
                     state = True
 
         elif os_is_mac():
-            command = f'echo state | {self.anyconnect} -s'
-            result = Shell.run(command)
-            state = "state: Connected" in result
+            import psutil
+            for proc in psutil.process_iter(attrs=['pid', 'name']):
+                # Check if the process name is 'openconnect'
+                if proc.info['name'] == 'openconnect':
+                    state = True
+                    break
             
         elif os_is_linux():
             result = requests.get("https://ipinfo.io")
