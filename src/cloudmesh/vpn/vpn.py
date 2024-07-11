@@ -529,7 +529,7 @@ class Vpn:
             # redone
 
             if not os.path.isdir(path_expand('~/.ssh/uva')) or not os.path.isfile(path_expand('~/.ssh/uva/mst3k.key')):
-                print("Please follow the instructions at https://github.com/cloudmesh/cloudmesh-vpn#linux")
+                print("Please follow the instructions at https://github.com/cloudmesh/cloudmesh-vpn#linux-and-macos")
                 quit(1)
 
             from cloudmesh.common.sudo import Sudo
