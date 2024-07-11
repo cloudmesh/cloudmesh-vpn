@@ -5,3 +5,4 @@ cloudmesh-configuration
 keyring
 pexpect
 pytest
+vpn-slice; platform_system != "Windows"
