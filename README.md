@@ -103,9 +103,11 @@ At UVA you find the certificate and other documentation at
 we place all certificates into ~/.ssh/uva
 
 ```
-mkdir -p You will receive a file ending in .p12. In this example we will assume it is named mst3k.p12.
+mkdir -p ~/.ssh/uva
+# You will receive a file ending in .p12. In this example we will assume it is named mst3k.p12.
 cd ~/.ssh/uva
-wget https://download.its.virginia.edu/local-auth/universal/usher.cer
+# wget https://download.its.virginia.edu/local-auth/universal/usher.cer
+wget --no-check-certificate https://download.its.virginia.edu/local-auth/universal/usher.cer
 ```
 
 To get a certificate for your device, go to 
@@ -123,8 +125,8 @@ Now convert the keys and certificates with the following commands
 
 ```bash
 cd ~/.ssh/uva
-openssl pkcs12 -in mst3k.p12 -nocerts -nodes -out mst3k.key
-openssl pkcs12 -in mst3k.p12 -clcerts -nokeys -out mst3k.crt
+openssl pkcs12 -in user.p12 -nocerts -nodes -out user.key
+openssl pkcs12 -in user.p12 -clcerts -nokeys -out user.crt
 openssl x509 -inform DER -in usher.cer -out usher.crt
 ```
 
