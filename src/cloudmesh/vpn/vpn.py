@@ -279,7 +279,6 @@ class Vpn:
                     state = True
 
         elif os_is_mac():
-            import psutil
             for proc in psutil.process_iter(attrs=['pid', 'name']):
                 # Check if the process name is 'openconnect'
                 if proc.info['name'] == 'openconnect':
