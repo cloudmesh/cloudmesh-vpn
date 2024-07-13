@@ -205,6 +205,17 @@ class Vpn:
                                  "then run your previous command again (up-arrow + enter).")
                     os._exit(1)
 
+    def close_cisco_secure_client(self):
+        try:
+            # AppleScript command to quit the Cisco Secure Client application
+            applescript_command = 'tell application "Cisco Secure Client" to quit'
+            # Execute the AppleScript command
+            subprocess.run(['osascript', '-e', applescript_command])
+            print("Cisco Secure Client application has been closed.")
+        except Exception as e:
+            print(f"An error occurred: {e}")
+
+
     def windows_stop_service(self):
         """Restarts the vpnagent service on Windows to avoid conflicts."""
 
@@ -279,6 +290,7 @@ class Vpn:
                     state = True
 
         elif os_is_mac():
+            import psutil
             for proc in psutil.process_iter(attrs=['pid', 'name']):
                 # Check if the process name is 'openconnect'
                 if proc.info['name'] == 'openconnect':
@@ -527,29 +539,29 @@ class Vpn:
             # redone
             # redone
 
-            if not os.path.isdir(path_expand('~/.ssh/uva')) or not os.path.isfile(path_expand('~/.ssh/uva/mst3k.key')):
-                print("Please follow the instructions at https://github.com/cloudmesh/cloudmesh-vpn#linux-and-macos")
-                quit(1)
+            # if not os.path.isdir(path_expand('~/.ssh/uva')) or not os.path.isfile(path_expand('~/.ssh/uva/mst3k.key')):
+            #     print("Please follow the instructions at https://github.com/cloudmesh/cloudmesh-vpn#linux-and-macos")
+            #     quit(1)
 
-            from cloudmesh.common.sudo import Sudo
-            Sudo.password()
+            # from cloudmesh.common.sudo import Sudo
+            # Sudo.password()
 
-            full_uva = path_expand('~/.ssh/uva')
-            if not full_uva[-1] == '/':
-                full_uva += '/'
+            # full_uva = path_expand('~/.ssh/uva')
+            # if not full_uva[-1] == '/':
+            #     full_uva += '/'
             
-            command = [
-                'sudo', 'openconnect', '-b', '-v', '--protocol=anyconnect',
-                f'--cafile={full_uva}usher.cer',
-                f'--sslkey={full_uva}mst3k.key',
-                f'--certificate={full_uva}mst3k.crt',
-                'uva-anywhere-1.itc.virginia.edu',
-                '-s', 'vpn-slice rivanna.hpc.virginia.edu'
-            ]
+            # command = [
+            #     'sudo', 'openconnect', '-b', '-v', '--protocol=anyconnect',
+            #     f'--cafile={full_uva}usher.cer',
+            #     f'--sslkey={full_uva}mst3k.key',
+            #     f'--certificate={full_uva}mst3k.crt',
+            #     'uva-anywhere-1.itc.virginia.edu',
+            #     '-s', 'vpn-slice rivanna.hpc.virginia.edu'
+            # ]
 
-            process = subprocess.Popen(command)
+            # process = subprocess.Popen(command)
 
-            return
+            # return
         
             # redone
             # redone
@@ -559,7 +571,7 @@ class Vpn:
             inner_command = ""
 
             if not organizations[vpn_name]["user"]:
-                mycommand = rf'{self.openconnect} "{organizations[vpn_name]["host"]}"'
+                mycommand = rf'{self.anyconnect} connect "{organizations[vpn_name]["host"]}"'
                 
             else:
                 # full_command = rf'{self.openconnect} {organizations[vpn_name]["host"]} --os=win --protocol=anyconnect --user={creds["user"]}'
@@ -572,7 +584,7 @@ class Vpn:
                 # inner_command = rf'\n{creds["user"]}\n{creds["pw"]}\npush\ny'
                 inner_command = rf'\n' + inner_command
             
-            full_command = rf'printf "{inner_command}" | "{self.openconnect}" "{organizations[vpn_name]["host"]}"'
+            full_command = rf'printf "{inner_command}" | "{self.anyconnect}" -s connect "{organizations[vpn_name]["host"]}"'
             # print(mycommand)
             service_started = False
             while not service_started:
@@ -581,7 +593,6 @@ class Vpn:
                                 'but it is already entered. Just confirm DUO.\n')
                     # self.windows_stop_service()
                     os.system(full_command)
-                
                 
                     service_started = True
                     return True
@@ -599,9 +610,9 @@ class Vpn:
                                 pexpect.EOF])
                 
                 if result in [0, 2, 3]:
-                    # self.windows_stop_service()
-                    Console.error("Not implemented to stop service on mac")
-                    return False
+                    self.close_cisco_secure_client()
+                    # Console.error("Not implemented to stop service on mac")
+                    # return False
 
                 # PW AUTHENTICATION
                 if result == 5:
