@@ -290,7 +290,6 @@ class Vpn:
                     state = True
 
         elif os_is_mac():
-            import psutil
             for proc in psutil.process_iter(attrs=['pid', 'name']):
                 # Check if the process name is 'openconnect'
                 if proc.info['name'] == 'openconnect':
@@ -410,13 +409,22 @@ class Vpn:
                     # print(':)', fr'"C:\Program Files\Git\bin\bash.exe" -c "{full_command}"')
                     
                     # r = subprocess.run(fr'"C:\Program Files\Git\bin\bash.exe" -c "{full_command} &"')
-                    process = subprocess.Popen(['openconnect', 
-                                organizations[vpn_name]["host"], 
-                                f'--user={creds["user"]}', 
-                                f'--script="{script_location}"', 
-                                '--passwd-on-stdin'],
-                               stdin=subprocess.PIPE,
-                               start_new_session=True)
+                    
+                    command = [
+                        'openconnect',
+                        organizations[vpn_name]["host"],
+                        f'--user={creds["user"]}',
+                        '--passwd-on-stdin'
+                    ]
+
+                    if not no_split:
+                        command.append(f'--script={script_location}')
+
+                    process = subprocess.Popen(
+                        command,
+                        stdin=subprocess.PIPE,
+                        start_new_session=True
+                    )
 
                     # Send the password to the openconnect command
                     process.stdin.write(creds['pw'].encode('utf-8') + b'\n')
@@ -778,7 +786,6 @@ class Vpn:
                     Console.ok('Successfully disconnected')
                 return
 
-            import psutil
             # Define the process name to search for
             process_name = "openconnect.exe"  # Adjust as needed
 
