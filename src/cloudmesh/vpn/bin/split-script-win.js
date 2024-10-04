@@ -20,8 +20,9 @@ var comspec = ws.ExpandEnvironmentStrings("%comspec%");
 // 2 - As 0.0.0.0/1 + 128.0.0.0/1 routes (override the default route cleanly)
 var REDIRECT_GATEWAY_METHOD = 1;
 var CISCO_SPLIT_INC = 3;
-var CISCO_SPLIT_INC_LIST = ["192.168.0.0", "10.0.0.0", "172.16.0.0"];
-var CISCO_SPLIT_INC_MASKS = ["255.255.255.0", "255.0.0.0", "255.240.0.0"];
+// 10.191.*.* is the cameras
+var CISCO_SPLIT_INC_LIST = ["192.168.0.0", "10.224.0.0", "172.16.0.0"];
+var CISCO_SPLIT_INC_MASKS = ["255.255.255.0", "255.224.0.0", "255.240.0.0"];
 
 // --------------------------------------------------------------
 // Utilities
