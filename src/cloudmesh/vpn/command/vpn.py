@@ -81,9 +81,13 @@ class VpnCommand(PluginCommand):
                     return True
 
                     
-                
             Console.ok("Connecting ... ")
-            vpn.connect()
+            vpn.connect(
+                {
+                    'service': arguments['service'],
+                    'nosplit': arguments['nosplit'],
+                }
+            )
             if vpn.enabled():
                 Console.ok("ok")
             else:

@@ -41,7 +41,10 @@ organizations = {'ufl': {"auth": "pw",
                         # High Security VPN Secondary VPN Concentrator: https://joint-vpn-2.itc.virginia.edu/
                          "user": False,
                          "2fa": False,
-                         "group": False},
+                         "group": False,
+                         "ip": "128.143.0.0",
+                         "domain": "virginia.edu",
+                         },
                  'fiu': {"auth": "pw",
                          "name": "vpn.fiu.edu",
                          "host": "vpn.fiu.edu",
@@ -359,14 +362,15 @@ class Vpn:
             creds = False
             no_split = True
             vpn_name = 'uva'
-                        
+
         if os_is_windows():
             if not pyuac.isUserAdmin():
                 Console.error("Please run your terminal as administrator")
                 sys.exit(1)
 
             # mycommand = rf'{self.anyconnect} {organizations[vpn_name]["host"]} --os=win --protocol=anyconnect --user={creds["user"]} --passwd-on-stdin'
-            if creds:
+
+            if 'user' in creds and 'pw' in creds:
                 base = f'{creds["user"]}\n{creds["pw"]}'            
                 inner_command = base
 
@@ -454,12 +458,36 @@ class Vpn:
                             almighty_cert = r.splitlines()[rightful_index].split('Cert URI: ')[-1].replace(';', r'\;')
                     
                     if almighty_cert:
-                        
+                        # Define the environment variables
+                        env_vars = os.environ.copy()
+                        iprange = organizations.get(vpn_name, {}).get('ip')
+                        domain = organizations.get(vpn_name, {}).get('domain')
+ 
                         full_command = rf'{self.openconnect} --certificate={almighty_cert} ' \
                                     rf'{organizations[vpn_name]["host"]}'
+                        if not no_split:
+                            full_command += rf' --script="{script_location.replace(os.sep, "/").replace("C:", "/c")}"'
+                            if iprange:
+
+                                env_vars.update({
+                                    'CISCO_SPLIT_INC': '3', # the first two route 10.* and 172.16* thru 172.31*
+                                    'CISCO_SPLIT_INC_2_ADDR': iprange,
+                                    'CISCO_SPLIT_INC_2_MASK': '255.255.0.0',
+                                    'CISCO_SPLIT_INC_2_MASKLEN': '16',
+                                })
+                            if domain:
+                                env_vars.update({
+                                    'VPN_DOMAIN': domain,
+                                })
+
+                        # full_command = rf'{self.openconnect} --certificate={almighty_cert} ' \
+                                    # rf'{organizations[vpn_name]["host"]}'
                         self.windows_stop_service()
                         # print(':)', fr'"C:\Program Files\Git\bin\bash.exe" -c "{full_command}"')
-                        r = subprocess.run(fr'"C:\Program Files\Git\bin\bash.exe" -c "{full_command} &"')
+                        r = subprocess.run(
+                            fr'"C:\Program Files\Git\bin\bash.exe" -c "{full_command} &"', 
+                            env=env_vars
+                        )
                     
                         service_started = True
                         return True
