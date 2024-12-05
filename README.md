@@ -2,7 +2,7 @@
 
 | School  | Tested | VPN-Slicing |
 | ------- | ------ | ----------- |
-| UVA&nbsp; <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/University_of_Virginia_Rotunda_logo.svg/2007px-University_of_Virginia_Rotunda_logo.svg.png" alt="uva" height="15"/> | ✅ | ❌ |
+| UVA&nbsp; <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/University_of_Virginia_Rotunda_logo.svg/2007px-University_of_Virginia_Rotunda_logo.svg.png" alt="uva" height="15"/> | ✅ | ✅ |
 | FIU&nbsp; <img src="https://brand.fiu.edu/_assets/images/fiu-alone.png" alt="fiu" height="15"/> | ✅ | ❌ |
 | UFL&nbsp; <img src="https://www.ufl.edu/wp-content/uploads/sites/5/2022/12/UF-logo-500x500-1.png" alt="uf" height="15"/> | ✅ | ✅ |
 | FAMU | ❌ | ❌ |
@@ -100,7 +100,7 @@ $ sudo apt install openssl
 $ sudo apt install openconnect
 $ sudo apt install network-manager-openconnect
 ```
-and in case you use gnoe also:
+and in case you use gnome also:
 
 ```bash
 $ sudo apt install network-manager-gnome
