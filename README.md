@@ -61,6 +61,22 @@ To see info regarding your connection, run
 cms vpn info
 ```
 
+## Troubleshooting
+
+Sometimes DNS lookup is broken entirely
+
+To fix:
+
+```powershell
+Get-DnsClientNrptRule | Remove-DnsClientNrptRule -Force
+netsh interface ipv4 delete winsservers name="Ethernet" all
+netsh interface ipv4 delete winsservers name="Wi-Fi" all
+rasdial /disconnect
+net start dnscache
+net stop dnscache
+ping google.com
+```
+
 ## Linux and macOS
 
 ### Requirements
