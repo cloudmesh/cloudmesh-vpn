@@ -84,7 +84,7 @@ class VpnCommand(PluginCommand):
             Console.ok("Connecting ... ")
             vpn.connect(
                 {
-                    'service': arguments['service'],
+                    'service': "uva",
                     'nosplit': arguments['nosplit'],
                 }
             )

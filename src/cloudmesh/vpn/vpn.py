@@ -29,7 +29,9 @@ organizations = {'ufl': {"auth": "pw",
                          "host": "vpn.ufl.edu",
                          "user": True,
                          "2fa": False,
-                         "group": False},
+                         "group": False,
+                         "domain": "ufl.edu",
+                         },
                  'uva': {"auth": "cert",
                          "name": "UVA Anywhere",
                          "host": "uva-anywhere-1.itc.virginia.edu",
@@ -406,6 +408,15 @@ class Vpn:
             # print(full_command)
             service_started = False
             while not service_started:
+                
+                env_vars = os.environ.copy()
+                domain = organizations.get(vpn_name, {}).get('domain')
+                if domain:
+                    env_vars.update({
+                        'VPN_DOMAIN': domain,
+                    })
+
+
                 if organizations[vpn_name]["user"] is True:
                     Console.warning('It will ask you for your password,\n'
                                 'but it is already entered. Just confirm DUO.\n')
@@ -413,7 +424,7 @@ class Vpn:
                     # print(':)', fr'"C:\Program Files\Git\bin\bash.exe" -c "{full_command}"')
                     
                     # r = subprocess.run(fr'"C:\Program Files\Git\bin\bash.exe" -c "{full_command} &"')
-                    
+
                     command = [
                         'openconnect',
                         organizations[vpn_name]["host"],
@@ -427,7 +438,8 @@ class Vpn:
                     process = subprocess.Popen(
                         command,
                         stdin=subprocess.PIPE,
-                        start_new_session=True
+                        start_new_session=True,
+                        env=env_vars
                     )
 
                     # Send the password to the openconnect command
@@ -459,26 +471,21 @@ class Vpn:
                     
                     if almighty_cert:
                         # Define the environment variables
-                        env_vars = os.environ.copy()
-                        iprange = organizations.get(vpn_name, {}).get('ip')
-                        domain = organizations.get(vpn_name, {}).get('domain')
+                        # iprange = organizations.get(vpn_name, {}).get('ip')
  
                         full_command = rf'{self.openconnect} --certificate={almighty_cert} ' \
                                     rf'{organizations[vpn_name]["host"]}'
                         if not no_split:
                             full_command += rf' --script="{script_location.replace(os.sep, "/").replace("C:", "/c")}"'
-                            if iprange:
+                            # if iprange:
 
-                                env_vars.update({
-                                    'CISCO_SPLIT_INC': '3', # the first two route 10.* and 172.16* thru 172.31*
-                                    'CISCO_SPLIT_INC_2_ADDR': iprange,
-                                    'CISCO_SPLIT_INC_2_MASK': '255.255.0.0',
-                                    'CISCO_SPLIT_INC_2_MASKLEN': '16',
-                                })
-                            if domain:
-                                env_vars.update({
-                                    'VPN_DOMAIN': domain,
-                                })
+                            #     env_vars.update({
+                            #         'CISCO_SPLIT_INC': '3', # the first two route 10.* and 172.16* thru 172.31*
+                            #         'CISCO_SPLIT_INC_2_ADDR': iprange,
+                            #         'CISCO_SPLIT_INC_2_MASK': '255.255.0.0',
+                            #         'CISCO_SPLIT_INC_2_MASKLEN': '16',
+                            #     })
+
 
                         # full_command = rf'{self.openconnect} --certificate={almighty_cert} ' \
                                     # rf'{organizations[vpn_name]["host"]}'
