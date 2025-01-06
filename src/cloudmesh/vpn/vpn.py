@@ -799,6 +799,29 @@ class Vpn:
                 time.sleep(1)
         # self._debug(result)
 
+    def remove_nrpt_rules_combined(self):
+        # Collect all domains in a list, prefixed with a dot (e.g. ".ufl.edu")
+        domains = [f".{org['domain']}" for org in organizations.values() if 'domain' in org]
+        
+        # Build a single condition string like:
+        # ( $_.Namespace -eq '.ufl.edu' ) -or ( $_.Namespace -eq '.virginia.edu' )
+        conditions = " -or ".join(f"( $_.Namespace -eq '{d}' )" for d in domains)
+        
+        # Final PowerShell command
+        # Example:
+        #   Get-DnsClientNrptRule |
+        #       Where-Object { ($_.Namespace -eq '.ufl.edu') -or ($_.Namespace -eq '.virginia.edu') } |
+        #       Remove-DnsClientNrptRule -Force
+        ps_command = (
+            "powershell.exe -Command "
+            f"\"Get-DnsClientNrptRule | "
+            f"Where-Object {{ {conditions} }} | "
+            f"Remove-DnsClientNrptRule -Force\""
+        )
+        
+        print("Removing NRPT rules for domains:", domains)
+        os.system(ps_command)
+
     def disconnect(self):
         """Disconnects from the VPN."""
         if not self.enabled():
@@ -821,6 +844,7 @@ class Vpn:
                     Console.ok('Successfully disconnected')
                 return
 
+            self.remove_nrpt_rules_combined()
             # Define the process name to search for
             process_name = "openconnect.exe"  # Adjust as needed
 
