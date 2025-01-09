@@ -52,7 +52,10 @@ organizations = {'ufl': {"auth": "pw",
                          "host": "vpn.fiu.edu",
                          "user": True,
                          "2fa": True,
-                         "group": False},
+                         "group": False,
+                         "ip": "131.94.0.0",
+                         "domain": "fiu.edu",
+                         },
                  'famu': {"auth": "pw",
                          "name": "vpn.famu.edu",
                          "host": "vpn.famu.edu",
@@ -411,9 +414,21 @@ class Vpn:
                 
                 env_vars = os.environ.copy()
                 domain = organizations.get(vpn_name, {}).get('domain')
+                iprange = organizations.get(vpn_name, {}).get('ip')
+
                 if domain:
                     env_vars.update({
                         'VPN_DOMAIN': domain,
+                    })
+
+ 
+                if iprange:
+
+                    env_vars.update({
+                        'CISCO_SPLIT_INC': '2', # the first two route 10.* and 172.16* thru 172.31*
+                        'CISCO_SPLIT_INC_1_ADDR': iprange,
+                        'CISCO_SPLIT_INC_1_MASK': '255.255.0.0',
+                        'CISCO_SPLIT_INC_1_MASKLEN': '16',
                     })
 
 
@@ -443,7 +458,11 @@ class Vpn:
                     )
 
                     # Send the password to the openconnect command
+                    
                     process.stdin.write(creds['pw'].encode('utf-8') + b'\n')
+                    if organizations[vpn_name]["2fa"]:
+                        process.stdin.write('push'.encode('utf-8') + b'\n')
+                        # process.stdin.flush()
                     process.stdin.flush()
                 
                     service_started = True

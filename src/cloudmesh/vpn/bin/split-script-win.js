@@ -56,9 +56,11 @@ env("CISCO_SPLIT_INC_0_MASK") = '255.0.0.0';
 env("CISCO_SPLIT_INC_0_MASKLEN") = 8;
 
 // Rule 2: 172.16.x.x through 172.31.x.x
-env("CISCO_SPLIT_INC_1_ADDR") = '172.16.0.0';
-env("CISCO_SPLIT_INC_1_MASK") = '255.240.0.0';
-env("CISCO_SPLIT_INC_1_MASKLEN") = 12;
+if (!env("CISCO_SPLIT_INC_1_ADDR")) {
+    env("CISCO_SPLIT_INC_1_ADDR") = '172.16.0.0';
+    env("CISCO_SPLIT_INC_1_MASK") = '255.240.0.0';
+    env("CISCO_SPLIT_INC_1_MASKLEN") = 12;
+}
 
 // New Rule 3: Route traffic to UVA's IP range (128.143.x.x) via VPN
 // env("CISCO_SPLIT_INC_2_ADDR") = '128.143.0.0';
