@@ -18,8 +18,7 @@
 
 Open any terminal (git bash, cmd, powershell) as administrator.
 
-Python 3.12 is recommended, which can be
-[downloaded from the Python website.](https://www.python.org/downloads/) Your Python version can be checked
+[Download Python from the Python website.](https://www.python.org/downloads/) Your Python version can be checked
 with the command `python -V`. Try doing the following.
 
 ```bash
