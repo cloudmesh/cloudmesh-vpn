@@ -20,11 +20,20 @@ Open any terminal (git bash, cmd, powershell) as administrator.
 
 Python 3.12 is recommended, which can be
 [downloaded from the Python website.](https://www.python.org/downloads/) Your Python version can be checked
-with the command `python -V`
-
-Once confirming Python, execute:
+with the command `python -V`. Try doing the following.
 
 ```bash
+python -V
+# hopefully that works, if not, use python3 instead of python from now on.
+python -m venv ~/ENV3
+# if you are in git bash or cmd then:
+source ~/ENV3/Scripts/activate
+# if you are in powershell then do ps1.
+source ~/ENV3/Scripts/activate.ps1
+```
+
+```bash
+# now you see (ENV3)
 pip install cloudmesh-vpn
 ```
 
