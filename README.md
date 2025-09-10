@@ -33,11 +33,15 @@ with the command `python -V`. Try doing the following.
 ```bash
 python -V
 # hopefully that works, if not, use python3 instead of python from now on.
+# in git bash run as administrator:
 python -m venv ~/ENV3
-# if you are in git bash or cmd then:
+# or, in cmd  run as administrator:
+python -m venv "$HOME\ENV3"
+#
+# if you are in git bash then:
 source ~/ENV3/Scripts/activate
-# if you are in powershell then do ps1.
-source ~/ENV3/Scripts/activate.ps1
+# if you are in cmd then:
+"%USERPROFILE%\ENV3\Scripts\activate.bat"
 ```
 
 ```bash
