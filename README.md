@@ -4,6 +4,10 @@ This library is a wrapper around [openconnect](https://gitlab.com/openconnect/op
 that provides added functionality. Additional features include secure password saving
 that uses the native-OS keyring, as well as vpn-slicing, which only sends traffic
 destined for school servers through the VPN and keeps other traffic out of the tunnel.
+Perhaps most conveniently, this library provides an easy way to install openconnect via
+a package manager (chocolatey for Windows, homebrew for macOS) without requiring any other
+dependencies besides Python. The package manager is installed for you on-the-fly which installs
+openconnect.
 
 | School  | Tested | VPN-Slicing |
 | ------- | ------ | ----------- |
