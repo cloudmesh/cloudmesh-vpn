@@ -1,5 +1,10 @@
 # cloudmesh-vpn
 
+This library is a wrapper around [openconnect](https://gitlab.com/openconnect/openconnect)
+that provides added functionality. Additional features include secure password saving
+that uses the native-OS keyring, as well as vpn-slicing, which only sends traffic
+destined for school servers through the VPN and keeps other traffic out of the tunnel.
+
 | School  | Tested | VPN-Slicing |
 | ------- | ------ | ----------- |
 | UVA&nbsp; <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/University_of_Virginia_Rotunda_logo.svg/2007px-University_of_Virginia_Rotunda_logo.svg.png" alt="uva" height="15"/> | ✅ | ✅ |
