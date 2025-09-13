@@ -858,6 +858,8 @@ class Vpn:
     def disconnect(self):
         """Disconnects from the VPN."""
         if not self.enabled():
+            if os_is_windows():
+                self.remove_nrpt_rules_combined()
             Console.ok("VPN is already deactivated")
             return ""
 
