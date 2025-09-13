@@ -54,6 +54,8 @@ pip install cloudmesh-vpn
 To connect to the UVA Anywhere VPN, run
 
 ```bash
+# YOU MUST BE IN YOUR VIRTUAL ENVIRONMENT.
+# see the previous commands on how to activate it first.
 cms vpn connect
 ```
 
