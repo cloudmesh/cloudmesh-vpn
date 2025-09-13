@@ -8,7 +8,7 @@ requires = [
 
 [project]
 name = "cloudmesh-vpn"
-version = "5.0.15"
+version = "5.0.16"
 description = "Virtual Private Network connection in the cloudmesh suite"
 readme = "README.md"
 requires-python = ">=3.8"
