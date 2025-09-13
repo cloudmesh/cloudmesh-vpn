@@ -373,6 +373,20 @@ class Vpn:
                 Console.error("Please run your terminal as administrator")
                 sys.exit(1)
 
+            # Resolve tools (once)
+            from cloudmesh.vpn.windows import ensure_choco_bin_on_process_path, get_openconnect_exe
+            ensure_choco_bin_on_process_path()
+            openconnect_exe = getattr(self, "openconnect", None)
+            if not openconnect_exe or not os.path.exists(openconnect_exe):
+                # Try to discover (works whether we just installed or it existed before)
+                oc = get_openconnect_exe()
+                if not oc:
+                    # As a last resort, install and get path
+                    oc = win_install()
+                self.openconnect = oc
+                openconnect_exe = oc
+
+
             # mycommand = rf'{self.anyconnect} {organizations[vpn_name]["host"]} --os=win --protocol=anyconnect --user={creds["user"]} --passwd-on-stdin'
 
             if 'user' in creds and 'pw' in creds:
@@ -441,7 +455,7 @@ class Vpn:
                     # r = subprocess.run(fr'"C:\Program Files\Git\bin\bash.exe" -c "{full_command} &"')
 
                     command = [
-                        'openconnect',
+                        openconnect_exe,
                         organizations[vpn_name]["host"],
                         f'--user={creds["user"]}',
                         '--passwd-on-stdin'
@@ -844,8 +858,6 @@ class Vpn:
     def disconnect(self):
         """Disconnects from the VPN."""
         if not self.enabled():
-            if os_is_windows():
-                self.remove_nrpt_rules_combined()
             Console.ok("VPN is already deactivated")
             return ""
 
