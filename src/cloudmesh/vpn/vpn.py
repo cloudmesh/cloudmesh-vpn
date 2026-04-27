@@ -175,9 +175,10 @@ class Vpn:
 
         self.debug = debug
         if service is None or service == "uva":
+            self.service_key = "uva"
             self.service = "UVA Anywhere"
-            # self.service = "https://uva-anywhere-1.itc.virginia.edu"
         else:
+            self.service_key = service
             self.service = service
 
         self.any = False
@@ -277,7 +278,7 @@ class Vpn:
         """
         return organizations[org.lower()]['user']
 
-    def enabled(self=None):
+    def enabled(self):
         state = False
         result = ""
         if os_is_windows():
@@ -298,11 +299,51 @@ class Vpn:
                     state = True
 
         elif os_is_mac():
-            for proc in psutil.process_iter(attrs=['pid', 'name']):
-                # Check if the process name is 'openconnect'
-                if proc.info['name'] == 'openconnect':
-                    state = True
+            # Retry loop to allow network state to propagate
+            for _ in range(5):
+                # Check for openconnect process
+                for proc in psutil.process_iter(attrs=['pid', 'name']):
+                    if proc.info['name'] == 'openconnect':
+                        state = True
+                        break
+                
+                # Also check Cisco AnyConnect state
+                if not state:
+                    try:
+                        result = str(Shell.run(f'{self.anyconnect} state') or "")
+                        if 'connected' in result.lower():
+                            state = True
+                    except Exception:
+                        pass
+                
+                # Fallback: Check public IP organization based on service
+                if not state:
+                    try:
+                        result = requests.get("https://ipinfo.io", timeout=5)
+                        org_info = result.json().get("org", "")
+                        
+                        # Map service keys to expected organization strings in ipinfo.io
+                        org_map = {
+                            "uva": "University of Virginia",
+                            "ufl": "University of Florida",
+                            "fiu": "Florida International University",
+                            "famu": "Florida A&M University",
+                            "nyu": "New York University",
+                            "uci": "University of California, Irvine",
+                            "gmu": "George Mason University",
+                            "olemiss": "University of Mississippi",
+                            "sc": "University of South Carolina",
+                        }
+                        
+                        expected_org = org_map.get(self.service_key.lower(), "University of Virginia")
+                        if expected_org in org_info:
+                            state = True
+                    except Exception:
+                        pass
+                
+                if state:
                     break
+                time.sleep(1)
             
         elif os_is_linux():
             result = requests.get("https://ipinfo.io")
@@ -893,12 +934,15 @@ class Vpn:
                         pass
 
         elif os_is_mac():
-            # command = f'{self.anyconnect} disconnect "{self.service}"'
-            # result = Shell.run(command)
+            # Try Cisco AnyConnect disconnect
+            command = f'{self.anyconnect} disconnect "{self.service}"'
+            Shell.run(command)
+
+            # Also try to kill openconnect just in case
             from cloudmesh.common.sudo import Sudo
             Sudo.password()
             command = f'sudo pkill -SIGINT openconnect &> /dev/null'
-            result = Shell.run(command)
+            Shell.run(command)
 
         elif os_is_linux():
             if not self.is_docker():
