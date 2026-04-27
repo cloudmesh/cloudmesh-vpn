@@ -98,10 +98,19 @@ class VpnCommand(PluginCommand):
         elif arguments.disconnect:
             Console.ok("Disconnecting ... ")
             vpn.disconnect()
+            
+            # Give the system a moment to update the network state
+            import time
+            for _ in range(5):
+                if not vpn.enabled():
+                    break
+                time.sleep(1)
+            
             if not vpn.enabled():
                 Console.ok("ok")
             else:
                 Console.error("failed")
+            print(vpn.info())
 
         elif arguments.status:
             print(vpn.enabled())
