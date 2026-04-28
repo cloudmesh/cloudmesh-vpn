@@ -18,11 +18,14 @@ class VpnCommand(PluginCommand):
 
   Usage:
         vpn connect [--service=SERVICE] [--timeout=TIMEOUT] [-v] [--choco] [--nosplit] [--provider=PROVIDER]
+        vpn + [--service=SERVICE] [--timeout=TIMEOUT] [-v] [--choco] [--nosplit] [--provider=PROVIDER]
         vpn disconnect [-v]
+        vpn - [-v]
         vpn status [-v]
         vpn info
         vpn reset [--service=SERVICE]
         vpn watch [INTERVAL]
+        vpn keychain
 
           This command manages the vpn connection
 
@@ -41,9 +44,11 @@ class VpnCommand(PluginCommand):
                 and "False" if it is not.
 
             vpn disconnect
+            vpn -
                 disconnects from the VPN.
 
             vpn connect [--service=SERVICE]
+            vpn +
                 connects to the UVA Anywhere VPN.
 
                 If the VPN is already connected a warning is shown.
@@ -54,10 +59,21 @@ class VpnCommand(PluginCommand):
             vpn reset [--service=SERVICE]
                 clears the credentials for the VPN service
 
+            vpn keychain
+                securely adds the VPN private key passphrase to the macOS Keychain.
+
 
         """
 
         map_parameters(arguments, "service", "timeout", "choco", "nosplit", "provider")
+
+        # Support shorthand aliases: + for connect, - for disconnect
+        arg_list = args.split() if isinstance(args, str) else args
+        if arg_list:
+            if '+' in arg_list:
+                arguments.connect = True
+            if '-' in arg_list:
+                arguments.disconnect = True
 
         from cloudmesh.vpn.vpn import Vpn
         vpn = Vpn(arguments.service,
@@ -156,6 +172,31 @@ class VpnCommand(PluginCommand):
                 vpn.pw_clearer(arguments['service'])
             else:
                 Console.info("No service specified, skipping credential cleanup.")
+
+        elif arguments.keychain:
+            import getpass
+            Console.info("Setting up VPN Keychain credentials...")
+            passphrase = getpass.getpass("Enter your private key passphrase: ")
+            if not passphrase:
+                Console.error("Passphrase cannot be empty.")
+                return False
+            
+            try:
+                # Use -w to provide the password from the prompt
+                subprocess.run(
+                    ["security", "add-generic-password", "-a", "uva", "-s", "uva-key-pass", "-w", passphrase],
+                    check=True,
+                    capture_output=True,
+                    text=True
+                )
+                Console.ok("Successfully added passphrase to macOS Keychain.")
+                return True
+            except subprocess.CalledProcessError as e:
+                if "already exists" in e.stderr.lower():
+                    Console.warning("Keychain item already exists. Use 'security delete-generic-password -a uva -s uva-key-pass' to remove it first.")
+                else:
+                    Console.error(f"Failed to add passphrase to keychain: {e.stderr.strip()}")
+                return False
 
         elif arguments.watch:
             # Determine if we should run once or loop

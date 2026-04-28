@@ -52,7 +52,6 @@ class MacOpenConnectKeychainStrategy(VpnOSStrategy):
             return False
 
         host = organizations[vpn_name]["host"]
-        
         # Warm up sudo to cache the system password
         try:
             subprocess.run(["sudo", "-v"], check=True)
@@ -83,31 +82,46 @@ class MacOpenConnectKeychainStrategy(VpnOSStrategy):
 
         cert_path = creds.get("cert_path")
         if not cert_path:
-            default_cert = os.path.expanduser("~/.ssh/uva/decrypted_user.pem")
+            default_cert = os.path.expanduser("~/.ssh/uva/user.crt")
             if os.path.exists(default_cert):
                 cert_path = default_cert
         
         key_path = creds.get("key_path")
+        if not key_path:
+            default_key = os.path.expanduser("~/.ssh/uva/user.key")
+            if os.path.exists(default_key):
+                key_path = default_key
+
         if not cert_path or not key_path:
-            Console.error("cert_path and key_path are required for openconnect-keychain provider")
+            Console.error("cert_path and key_path are required for openconnect-keychain provider (defaults ~/.ssh/uva/user.crt and user.key not found)")
             return False
         
+        keychain_service = creds.get("keychain_service", "uva-key-pass")
         try:
+            Console.info(f"Searching Keychain for service: {keychain_service}...")
+            # Added -a uva to match the required account field for add-generic-password
             passphrase = subprocess.check_output(
-                ["security", "find-generic-password", "-w", "-s", "uva-key-pass"], 
-                text=True
+                ["security", "find-generic-password", "-w", "-a", "uva", "-s", keychain_service], 
+                text=True,
+                stderr=subprocess.STDOUT
             ).strip()
-        except subprocess.CalledProcessError:
-            Console.error("Could not find 'uva-key-pass' in macOS Keychain")
+        except subprocess.CalledProcessError as e:
+            Console.error(f"Keychain lookup failed for '{keychain_service}'")
+            # e.output is already a string because text=True was used in check_output
+            output = e.output.strip() if e.output else "No output"
+            Console.error(f"Shell output: {output}")
+            Console.info(f"To add it securely (you will be prompted for the password), run:")
+            Console.info(f"  security add-generic-password -a uva -s {keychain_service}")
             return False
 
         # Use standard sudo since password is now cached via sudo -v
-        command = f"sudo {oc_exe} --protocol=anyconnect -u {user} -c {path_expand(cert_path)} -k {path_expand(key_path)} --passphrase-from-fsid {script_arg} {host}"
+        # We remove the invalid --passphrase-from-fsid flag.
+        command = f"sudo {oc_exe} --protocol=anyconnect -u {user} -c {path_expand(cert_path)} -k {path_expand(key_path)} {script_arg} {host}"
         Console.info(f"Connecting via OpenConnect (Keychain): {command}")
         
         try:
             # Construct the command as a list to avoid shell=True and TTY issues with sudo.
-            cmd_list = ["sudo", oc_exe, "--protocol=anyconnect", "-u", user, "-c", path_expand(cert_path), "-k", path_expand(key_path), "--passphrase-from-fsid"]
+            cmd_list = ["sudo", oc_exe, "--protocol=anyconnect", "-u", user, "-c", path_expand(cert_path), "-k", path_expand(key_path)]
             if script_arg:
                 vs_exe_path = self.vpn_slice
                 org_config = organizations.get(vpn_name, {})
@@ -120,9 +134,10 @@ class MacOpenConnectKeychainStrategy(VpnOSStrategy):
             
             cmd_list.append(host)
             
-            # Use subprocess.Popen without start_new_session=True to maintain TTY association for sudo.
+            # Use subprocess.Popen with stdin=PIPE to provide the passphrase.
             proc = subprocess.Popen(
                 cmd_list,
+                stdin=subprocess.PIPE,
                 stdout=None, # Inherit stdout
                 stderr=None, # Inherit stderr
                 text=True
@@ -133,6 +148,11 @@ class MacOpenConnectKeychainStrategy(VpnOSStrategy):
                 os.setpgid(proc.pid, 0)
             except (ProcessLookupError, PermissionError):
                 pass # Ignore if we can't set pgid (e.g. due to sudo privilege change)
+            
+            # Provide the passphrase retrieved from the Keychain.
+            if passphrase:
+                proc.stdin.write(passphrase + "\n")
+                proc.stdin.flush()
             
             # Give it a few seconds to start and establish connection
             time.sleep(2)
