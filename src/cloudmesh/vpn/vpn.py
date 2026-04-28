@@ -1,228 +1,362 @@
 import os
 import shutil
+import subprocess
+import time
+import sys
+from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional, Union
 
 import psutil
 import requests
 import pexpect
-import time
-import sys
 from pexpect.popen_spawn import PopenSpawn
-import subprocess
 
 from cloudmesh.common.Shell import Shell
 from cloudmesh.common.Shell import Console
 from cloudmesh.common.util import path_expand
-from cloudmesh.common.systeminfo import os_is_linux
-from cloudmesh.common.systeminfo import os_is_mac
-from cloudmesh.common.systeminfo import os_is_windows
+from cloudmesh.common.systeminfo import os_is_linux, os_is_mac, os_is_windows
 
 from cloudmesh.vpn.windows import win_install
-
+import yaml
 import keyring as kr
-
 
 if os_is_windows():
     import pyuac
 
-# 2fa does not refer to duo but rather second password
-organizations = {
-    "ufl": {
-        "auth": "pw",
-        "name": "Gatorlink VPN",
-        "host": "vpn.ufl.edu",
-        "user": True,
-        "2fa": False,
-        "group": False,
-        "domain": "cise.ufl.edu",
-    },
-    "uva": {
-        "auth": "cert",
-        "name": "UVA Anywhere",
-        "host": "uva-anywhere-1.itc.virginia.edu",
-        # UVA Anywhere Primary VPN Concentrator: https://uva-anywhere-1.itc.virginia.edu/
-        # UVA Anywhere Secondary VPN Concentrator: https://uva-anywhere-2.itc.virginia.edu/
-        # More Secure Network Primary VPN Concentrator: https://moresecure-vpn-1.itc.virginia.edu/
-        # More Secure Network Secondary VPN Concentrator: https://moresecure-vpn-2.itc.virginia.edu/
-        # High Security VPN Primary VPN Concentrator: https://joint-vpn-1.itc.virginia.edu/
-        # High Security VPN Secondary VPN Concentrator: https://joint-vpn-2.itc.virginia.edu/
-        "user": False,
-        "2fa": False,
-        "group": False,
-        "ip": "128.143.0.0",
-        "domain": "virginia.edu",
-    },
-    "fiu": {
-        "auth": "pw",
-        "name": "vpn.fiu.edu",
-        "host": "vpn.fiu.edu",
-        "user": True,
-        "2fa": True,
-        "group": False,
-        "ip": "131.94.0.0",
-        "domain": "fiu.edu",
-    },
-    "famu": {
-        "auth": "pw",
-        "name": "vpn.famu.edu",
-        "host": "vpn.famu.edu",
-        "user": True,
-        "2fa": False,
-        "group": False,
-    },
-    "nyu": {
-        "auth": "pw",
-        "name": "vpn.nyu.edu",
-        "host": "vpn.nyu.edu",
-        "user": True,
-        "2fa": True,
-        "group": "NYU VPN: NYU-NET Traffic Only",
-    },
-    "uci": {
-        "auth": "pw",
-        "name": "vpn.uci.edu",
-        "host": "vpn.uci.edu",
-        "user": True,
-        "2fa": False,
-        "group": True,
-    },
-    "gmu": {
-        "auth": "pw",
-        "name": "vpn.gmu.edu",
-        "host": "vpn.gmu.edu",
-        "user": True,
-        "2fa": False,
-        "group": False,
-    },
-    "olemiss": {
-        "auth": "pw",
-        "name": "vpn.olemiss.edu",
-        "host": "vpn.olemiss.edu",
-        "user": True,
-        "2fa": False,
-        "group": False,
-    },
-    "sc": {
-        "auth": "pw",
-        "name": "vpn.sc.edu",
-        "host": "vpn.sc.edu",
-        "user": True,
-        "2fa": False,
-        "group": True,
-        "pw_concat": True,
-    },
-}
+# Load VPN Organization Configurations from YAML
+org_file = os.path.join(os.path.dirname(__file__), "organizations.yaml")
+with open(org_file, "r") as f:
+    data = yaml.safe_load(f)
+    organizations = data.get("cloudmesh", {}).get("vpn", {})
 
-# mac /opt/cisco/secureclient/bin/vpn
-# mac: /opt/cisco/anyconnect/bin
+class VpnOSStrategy(ABC):
+    """Abstract Base Class for OS-specific VPN strategies."""
 
-# windows
-# $ 'C:\Program Files (x86)\Cisco\Cisco AnyConnect Secure Mobility Client\vpncli.exe'
-# Cisco AnyConnect Secure Mobility Client (version 4.10.05095) .
-#
-# Copyright (c) 2004 - 2022 Cisco Systems, Inc.  All Rights Reserved.
-#
-#
-#   >> state: Connected
-#   >> state: Connected
-#   >> registered with local VPN subsystem.
-#   >> state: Connected
-#   >> notice: Connected to uva-anywhere-1.itc.virginia.edu.
+    def __init__(self, vpn_context: 'Vpn'):
+        self.vpn = vpn_context
+        self.openconnect = self._discover_openconnect()
+        self.anyconnect = self._discover_anyconnect()
 
+    @abstractmethod
+    def _discover_openconnect(self) -> Optional[str]:
+        pass
 
-# dig -4 TXT +short o-o.myaddr.l.google.com @ns1.google.com
-# "128.143.1.11" = uva
+    @abstractmethod
+    def _discover_anyconnect(self) -> Optional[str]:
+        pass
 
-#
-# open:
-#   /opt/cisco/anyconnect/bin/vpn connect "UVA Anywhere";
-# high security:
-#   /opt/cisco/anyconnect/bin/vpn connect "UVA High Security VPN";
-# more security:
-#   /opt/cisco/anyconnect/bin/vpn connect "UVA More Secure Network";
-# close:
-#   /opt/cisco/anyconnect/bin/vpn disconnect;
+    @abstractmethod
+    def connect(self, creds: Dict[str, Any], vpn_name: str, no_split: bool) -> Union[bool, str, None]:
+        pass
 
-"""Provides a VPN (Virtual Private Network) class for managing VPN connections and disconnections.
+    @abstractmethod
+    def disconnect(self) -> None:
+        pass
 
-This module supports different VPN services and their configurations, including 
-authentication methods and group memberships.
-
-Attributes:
-    organizations (dict): A dictionary containing information about various VPN organizations.
-
-Classes:
-    Vpn: A class for managing VPN connections and disconnections.
-
-"""
-
-
-class Vpn:
-    """A class for managing VPN connections and disconnections."""
+    @abstractmethod
+    def is_enabled(self) -> bool:
+        pass
 
     def _discover_binary(self, binary_name: str, common_paths: List[str]) -> Optional[str]:
-        """Discovers the path to a binary by checking PATH and common installation paths.
-
-        Args:
-            binary_name (str): The name of the binary to search for.
-            common_paths (List[str]): A list of common paths to check.
-
-        Returns:
-            Optional[str]: The path to the binary if found, otherwise None.
-        """
-        # 1. Check if it's in the system PATH
         path = shutil.which(binary_name)
         if path:
             return path
-
-        # 2. Check common installation paths
         for p in common_paths:
             if os.path.exists(p) and os.path.isfile(p) and os.access(p, os.X_OK):
                 return p
-
         return None
 
-    def __init__(self, service: Optional[str] = None, timeout: Optional[int] = None, debug: bool = False) -> None:
-        """Initializes the Vpn object.
-
-        Args:
-            service (str): The VPN service name. Defaults to None.
-            timeout (int): The timeout value for various operations. Defaults to None.
-            debug (bool): If True, enables debug mode. Defaults to False.
-        """
-        if timeout is None:
-            self.timeout = 60
-        else:
-            self.timeout = timeout
-
-        self.debug = debug
-
-        # Automatic Binary Discovery
-        self.openconnect = self._discover_binary("openconnect", [
+class WindowsVpnStrategy(VpnOSStrategy):
+    def _discover_openconnect(self) -> Optional[str]:
+        return self._discover_binary("openconnect", [
             "/usr/bin/openconnect",
             "/usr/local/bin/openconnect",
             "/opt/homebrew/bin/openconnect",
         ])
 
-        if os_is_windows():
-            system_drive = os.environ.get("SYSTEMDRIVE", "C:")
-            self.anyconnect = self._discover_binary("vpncli.exe", [
-                rf"{system_drive}\Program Files (x86)\Cisco\Cisco Secure Client\vpncli.exe",
-                rf"{system_drive}\Program Files (x86)\Cisco\Cisco AnyConnect Secure Mobility Client\vpncli.exe",
-            ])
-        elif os_is_mac():
-            self.anyconnect = self._discover_binary("vpn", [
-                "/opt/cisco/secureclient/bin/vpn",
-                "/opt/cisco/anyconnect/bin/vpn",
-            ])
-        elif os_is_linux():
-            self.anyconnect = self._discover_binary("vpn", [
-                "/opt/cisco/anyconnect/bin/vpn",
-            ])
-        else:
-            raise NotImplementedError("OS is not yet supported for anyconnect")
+    def _discover_anyconnect(self) -> Optional[str]:
+        system_drive = os.environ.get("SYSTEMDRIVE", "C:")
+        return self._discover_binary("vpncli.exe", [
+            rf"{system_drive}\Program Files (x86)\Cisco\Cisco Secure Client\vpncli.exe",
+            rf"{system_drive}\Program Files (x86)\Cisco\Cisco AnyConnect Secure Mobility Client\vpncli.exe",
+        ])
 
+    def _stop_vpn_services(self) -> None:
+        Console.warning("Restarting vpnagent to avoid conflict")
+        for program in ["vpnagent.exe", "vpncli.exe"]:
+            try:
+                os.system(f"taskkill /im {program} /F")
+            except Exception:
+                pass
+        try:
+            Shell.run("net stop csc_vpnagent")
+        except Exception:
+            pass
+        try:
+            Shell.run("net start csc_vpnagent")
+        except Exception:
+            pass
+        try:
+            os.system("taskkill /im csc_ui.exe /F")
+        except Exception:
+            pass
+
+    def _remove_nrpt_rules(self) -> None:
+        domains = [f".{org['domain']}" for org in organizations.values() if "domain" in org]
+        conditions = " -or ".join(f"( $_.Namespace -eq '{d}' )" for d in domains)
+        ps_command = (
+            "powershell.exe -Command "
+            f'"Get-DnsClientNrptRule | '
+            f"Where-Object {{ {conditions} }} | "
+            f'Remove-DnsClientNrptRule -Force"'
+        )
+        os.system(ps_command)
+
+    def is_enabled(self) -> bool:
+        process_name = "openconnect.exe"
+        for process in psutil.process_iter(attrs=["name"]):
+            if process.info["name"] == process_name:
+                return True
+        return False
+
+    def connect(self, creds: Dict[str, Any], vpn_name: str, no_split: bool) -> Union[bool, str, None]:
+        if not pyuac.isUserAdmin():
+            Console.error("Please run your terminal as administrator")
+            sys.exit(1)
+
+        from cloudmesh.vpn.windows import ensure_choco_bin_on_process_path, get_openconnect_exe
+        ensure_choco_bin_on_process_path()
+        
+        oc_exe = self.openconnect or get_openconnect_exe() or win_install()
+        self.openconnect = oc_exe
+
+        if not oc_exe or not os.path.exists(oc_exe):
+            Console.error(f"VPN binary not found. Please install OpenConnect.")
+            return False
+
+        script_location = os.path.join(os.path.dirname(__file__), "bin", "split-script-win.js")
+        
+        env_vars = os.environ.copy()
+        domain = organizations.get(vpn_name, {}).get("domain")
+        iprange = organizations.get(vpn_name, {}).get("ip")
+        if domain: env_vars["VPN_DOMAIN"] = domain
+        if iprange:
+            env_vars.update({
+                "CISCO_SPLIT_INC": "2",
+                "CISCO_SPLIT_INC_1_ADDR": iprange,
+                "CISCO_SPLIT_INC_1_MASK": "255.255.0.0",
+                "CISCO_SPLIT_INC_1_MASKLEN": "16",
+            })
+
+        if organizations[vpn_name]["user"]:
+            Console.warning("It will ask you for your password, but it is already entered. Just confirm DUO.")
+            self._stop_vpn_services()
+            
+            command = [oc_exe, organizations[vpn_name]["host"], f'--user={creds["user"]}', "--passwd-on-stdin"]
+            if not no_split:
+                command.append(f"--script={script_location}")
+
+            process = subprocess.Popen(command, stdin=subprocess.PIPE, start_new_session=True, env=env_vars)
+            process.stdin.write(creds["pw"].encode("utf-8") + b"\n")
+            if organizations[vpn_name]["2fa"]:
+                process.stdin.write("push".encode("utf-8") + b"\n")
+            process.stdin.flush()
+            return True
+
+        elif organizations[vpn_name]["auth"] == "cert":
+            try:
+                r = Shell.run("list-system-keys")
+            except RuntimeError:
+                Console.error("Certificate keys not found. Please install certificate.")
+                return False
+
+            almighty_cert = None
+            for index, line in enumerate(r.splitlines()):
+                if "University of Virginia" in line:
+                    almighty_cert = r.splitlines()[index - 2].split("Cert URI: ")[-1].replace(";", r"\;")
+                    break
+
+            if almighty_cert:
+                full_command = rf"{self.openconnect} --certificate={almighty_cert} {organizations[vpn_name]['host']}"
+                if not no_split:
+                    full_command += rf' --script="{script_location.replace(os.sep, "/").replace("C:", "/c")}"'
+                self._stop_vpn_services()
+                subprocess.run(rf'"C:\Program Files\Git\bin\bash.exe" -c "{full_command} &"', env=env_vars)
+                return True
+            
+            Console.error("Failed to parse system keys.")
+            return False
+        
+        return False
+
+    def disconnect(self) -> None:
+        if self.anyconnect:
+            mycommand = rf'{self.anyconnect} disconnect "{self.vpn.service}"'
+            try:
+                r = PopenSpawn(mycommand)
+                r.expect([pexpect.TIMEOUT, r"^.*Disconnected.*$", pexpect.EOF])
+                Console.ok("Successfully disconnected")
+            except Exception:
+                pass
+        
+        self._remove_nrpt_rules()
+        for process in psutil.process_iter(attrs=["pid", "name"]):
+            if process.info["name"] == "openconnect.exe":
+                try:
+                    psutil.Process(process.info["pid"]).terminate()
+                except psutil.NoSuchProcess:
+                    pass
+
+class MacVpnStrategy(VpnOSStrategy):
+    def _discover_openconnect(self) -> Optional[str]:
+        return self._discover_binary("openconnect", ["/usr/bin/openconnect", "/usr/local/bin/openconnect", "/opt/homebrew/bin/openconnect"])
+
+    def _discover_anyconnect(self) -> Optional[str]:
+        return self._discover_binary("vpn", ["/opt/cisco/secureclient/bin/vpn", "/opt/cisco/anyconnect/bin/vpn"])
+
+    def is_enabled(self) -> bool:
+        for _ in range(5):
+            try:
+                res = requests.get("https://ipinfo.io", timeout=5)
+                org_info = res.json().get("org", "")
+                org_map = {
+                    "uva": "University of Virginia", "ufl": "University of Florida",
+                    "fiu": "Florida International University", "famu": "Florida A&M University",
+                    "nyu": "New York University", "uci": "University of California, Irvine",
+                    "gmu": "George Mason University", "olemiss": "University of Mississippi",
+                    "sc": "University of South Carolina",
+                }
+                expected_org = org_map.get(self.vpn.service_key.lower(), "University of Virginia")
+                if expected_org in org_info: return True
+                return False
+            except Exception:
+                pass
+            
+            if self.anyconnect:
+                try:
+                    result = Shell.run(f"{self.anyconnect} state")
+                    if "state: connected" in result.lower(): return True
+                except Exception:
+                    pass
+            
+            for proc in psutil.process_iter(attrs=["name"]):
+                if proc.info["name"] == "openconnect": return True
+            time.sleep(1)
+        return False
+
+    def connect(self, creds: Dict[str, Any], vpn_name: str, no_split: bool) -> Union[bool, str, None]:
+        if not organizations[vpn_name]["user"]:
+            mycommand = rf'{self.anyconnect} connect "{organizations[vpn_name]["host"]}"'
+        else:
+            inner_command = rf'{creds["user"]}\n{creds["pw"]}\ny'
+            if organizations[vpn_name]["2fa"]:
+                inner_command = rf'{creds["user"]}\n{creds["pw"]}\npush\ny'
+            if organizations[vpn_name].get("pw_concat", False):
+                inner_command = rf'{creds["user"]}\n{creds["pw"]}\n{creds["pw"]},push\ny'
+            if organizations[vpn_name]["group"]:
+                inner_command = rf"\n" + inner_command
+            
+            full_command = rf'printf "{inner_command}" | "{self.anyconnect}" -s connect "{organizations[vpn_name]["host"]}"'
+            os.system(full_command)
+            return True
+
+        r = pexpect.spawn(mycommand, logfile=sys.stdout.buffer)
+        r.timeout = 25
+        result = r.expect([pexpect.TIMEOUT, r"^.*accept.*$", r"^.*Another Cisco Secure Client.*$", 
+                           r"^.*VPN service is unavailable.*$", r"^.*No valid certificate.*$", 
+                           r"^.*sername.*$", r"^.*'yes' to accept.*$", pexpect.EOF])
+        
+        if result == 5: # PW AUTH
+            if len(r.after.strip()) > len("Username:"): r.sendline()
+            else: r.sendline(creds["user"])
+            if r.expect([pexpect.TIMEOUT, "^.*ssword.*$", pexpect.EOF]) == 1:
+                r.sendline(creds["pw"])
+            r.timeout = 60
+            if r.expect([pexpect.TIMEOUT, "^.*Got CONNECT response: HTTP/1.1 200 OK.*$", "failed"]) == 1:
+                r.wait()
+                return True
+        elif result == 1:
+            r.sendline("y")
+            if r.expect([pexpect.TIMEOUT, "^.*Connected.*$", "^.*Downloading Cisco.*$", pexpect.EOF]) == 1:
+                return True
+        return False
+
+    def disconnect(self) -> None:
+        if self.anyconnect:
+            Shell.run(f'{self.anyconnect} disconnect "{self.vpn.service}"')
+        Shell.run("pkill -SIGINT openconnect &> /dev/null || true")
+
+class LinuxVpnStrategy(VpnOSStrategy):
+    def _discover_openconnect(self) -> Optional[str]:
+        return self._discover_binary("openconnect", ["/usr/bin/openconnect", "/usr/local/bin/openconnect"])
+
+    def _discover_anyconnect(self) -> Optional[str]:
+        return self._discover_binary("vpn", ["/opt/cisco/anyconnect/bin/vpn"])
+
+    def is_enabled(self) -> bool:
+        try:
+            res = requests.get("https://ipinfo.io", timeout=5)
+            if "University of Virginia" in res.json().get("org", ""): return True
+        except Exception:
+            pass
+        
+        if os.path.exists("/.dockerenv") or (os.path.isfile("/proc/self/cgroup") and "docker" in open("/proc/self/cgroup").read()):
+            if "openconnect" in Shell.run("ps -u"): return True
+        return False
+
+    def connect(self, creds: Dict[str, Any], vpn_name: str, no_split: bool) -> Union[bool, str, None]:
+        home = os.environ.get("HOME", "")
+        if not (os.path.exists("/.dockerenv") or (os.path.isfile("/proc/self/cgroup") and "docker" in open("/proc/self/cgroup").read())):
+            from cloudmesh.common.sudo import Sudo
+            Sudo.password()
+            command = (
+                "sudo openconnect -b -v --protocol=anyconnect "
+                f'--cafile="{home}/.ssh/uva/usher.cer" '
+                f'--sslkey="{home}/.ssh/uva/user.key" '
+                f'--certificate="{home}/.ssh/uva/user.crt" '
+                "uva-anywhere-1.itc.virginia.edu 2>&1 > /dev/null"
+            )
+        else:
+            command = (
+                "openconnect -b -v --protocol=anyconnect "
+                f'--cafile="/root/.ssh/uva/usher.cer" '
+                f'--sslkey="/root/.ssh/uva/user.key" '
+                f'--certificate="/root/.ssh/uva/user.crt" -m 1290 '
+                "uva-anywhere-1.itc.virginia.edu "
+                "--script='vpn-slice --prevent-idle-timeout rivanna.hpc.virginia.edu biihead1.bii.virginia.edu biihead2.bii.virginia.edu'"
+            )
+        os.system(command)
+        while not self.is_enabled():
+            time.sleep(1)
+        return True
+
+    def disconnect(self) -> None:
+        if not (os.path.exists("/.dockerenv") or (os.path.isfile("/proc/self/cgroup") and "docker" in open("/proc/self/cgroup").read())):
+            from cloudmesh.common.sudo import Sudo
+            Sudo.password()
+            Shell.run("sudo pkill -SIGINT openconnect &> /dev/null")
+        else:
+            Shell.run("pkill -SIGINT openconnect &> /dev/null")
+            Shell.run("pkill -SIGINT vpn-slice &> /dev/null")
+
+class Vpn:
+    """Context class for managing VPN connections using OS-specific strategies."""
+
+    def __init__(self, service: Optional[str] = None, timeout: Optional[int] = None, debug: bool = False) -> None:
+        self.timeout = timeout or 60
         self.debug = debug
+        
+        # Strategy Selection
+        if os_is_windows():
+            self.strategy = WindowsVpnStrategy(self)
+        elif os_is_mac():
+            self.strategy = MacVpnStrategy(self)
+        elif os_is_linux():
+            self.strategy = LinuxVpnStrategy(self)
+        else:
+            raise NotImplementedError("OS is not supported")
+
+        # Service Configuration
         if service is None or service == "uva":
             self.service_key = "uva"
             self.service = "UVA Anywhere"
@@ -230,39 +364,64 @@ class Vpn:
             service_lower = service.lower()
             if service_lower not in organizations:
                 available = ", ".join(organizations.keys())
-                raise ValueError(
-                    f"Invalid VPN service '{service}'. Available services are: {available}"
-                )
+                raise ValueError(f"Invalid VPN service '{service}'. Available: {available}")
             self.service_key = service_lower
             self.service = service
 
-        self.any = False
+    def _debug(self, msg: str) -> None:
+        if self.debug:
+            print(msg)
+
+    def is_user_auth(self, org: str) -> bool:
+        return organizations[org.lower()]["user"]
+
+    def enabled(self) -> bool:
+        return self.strategy.is_enabled()
+
+    def connect(self, *args: Any) -> Union[bool, str, None]:
+        if args:
+            creds = args[0]
+            no_split = creds.get("nosplit", True)
+            vpn_name = creds.get("service", "uva")
+        else:
+            creds = {}
+            no_split = True
+            vpn_name = "uva"
+
+        return self.strategy.connect(creds, vpn_name, no_split)
+
+    def disconnect(self) -> None:
+        if not self.enabled():
+            Console.ok("VPN is already deactivated")
+            return
+        
+        self.strategy.disconnect()
+        
+        if self.enabled():
+            Console.error("VPN is still enabled. Disconnection may have failed.")
+        else:
+            Console.ok("Successfully disconnected from VPN.")
 
     def anyconnect_checker(self, choco: bool = False) -> None:
-        """Checks if the AnyConnect VPN client is installed, installs it if needed.
+        """Checks if the VPN client is installed, installs it if needed.
 
         Args:
-            choco (bool): If True, installs AnyConnect using Chocolatey. Defaults to False.
+            choco (bool): If True, installs using Chocolatey (Windows). Defaults to False.
         """
-        # if not os.path.isfile(self.anyconnect):
         try:
             Shell.run("openconnect -V")
         except RuntimeError:
             if os_is_windows():
-                if choco is False:
-                    Console.error(
-                        "OpenConnect not found. Please install, or use --choco parameter."
-                    )
+                if not choco:
+                    Console.error("OpenConnect not found. Please install, or use --choco parameter.")
                     os._exit(1)
                 else:
                     Console.warning("OpenConnect not found. Installing OpenConnect...")
                     win_install()
 
-            if os_is_mac():
-                if choco is False:
-                    Console.error(
-                        "OpenConnect not found. Please install, or use --choco parameter."
-                    )
+            elif os_is_mac():
+                if not choco:
+                    Console.error("OpenConnect not found. Please install, or use --choco parameter.")
                     os._exit(1)
                 else:
                     Console.warning("OpenConnect not found. Installing OpenConnect...")
@@ -273,922 +432,30 @@ class Vpn:
                     )
                     os._exit(1)
 
-    def close_cisco_secure_client(self) -> None:
-        try:
-            # AppleScript command to quit the Cisco Secure Client application
-            applescript_command = 'tell application "Cisco Secure Client" to quit'
-            # Execute the AppleScript command
-            subprocess.run(["osascript", "-e", applescript_command])
-            print("Cisco Secure Client application has been closed.")
-        except Exception as e:
-            print(f"An error occurred: {e}")
+    def info(self) -> str:
+        return Shell.run("curl -s ipinfo.io")
 
-    def windows_stop_service(self) -> None:
-        """Restarts the vpnagent service on Windows to avoid conflicts."""
-
-        Console.warning("Restarting vpnagent to avoid conflict")
-
-        for program in ["vpnagent.exe", "vpncli.exe"]:
-            try:
-                r = os.system(f"taskkill /im {program} /F")
-            except Exception:
-                pass
-
-        try:
-            r = Shell.run("net stop csc_vpnagent")
-        except Exception:
-            pass
-
-        try:
-            r = Shell.run("net start csc_vpnagent")
-        except Exception:
-            pass
-
-        try:
-            r = os.system("taskkill /im csc_ui.exe /F")
-        except Exception:
-            pass
-
-    def is_docker(self) -> bool:
-        path = "/proc/self/cgroup"
-        return (
-            os.path.exists("/.dockerenv")
-            or (os.path.isfile(path) and any("docker" in line for line in open(path)))
-        )
-
-    def _debug(self, msg: str) -> None:
-        """Prints debug messages if debug mode is enabled.
-
-        Args:
-            msg (str): The debug message to print.
-        """
-        if self.debug:
-            print(msg)
-
-    def is_user_auth(self, org: str) -> bool:
-        """Checks if the specified organization requires user authentication.
-
-        Args:
-            org (str): The organization name.
-
-        Returns:
-            bool: True if user authentication is required, False otherwise.
-        """
-        return organizations[org.lower()]["user"]
-
-    def enabled(self) -> bool:
-        state = False
-        result = ""
-        if os_is_windows():
-            # r = str(subprocess.run(f"{self.anyconnect} state",
-            #                         capture_output=True,
-            #                         text=True))
-
-            # state = 'state: Connected' in r
-            # # result = Shell.run("route print").strip()
-            # # state = "Cisco AnyConnect" in result
-            # if state is True:
-            #     self.any = True
-            # if state is False:
-            self.any = False
-            process_name = "openconnect.exe"  # Adjust as needed
-            for process in psutil.process_iter(attrs=["name"]):
-                if process.info["name"] == process_name:
-                    state = True
-
-        elif os_is_mac():
-            # Retry loop to allow network state to propagate
-            for _ in range(5):
-                # 1. Primary Check: Public IP organization (Most reliable)
-                try:
-                    result = requests.get("https://ipinfo.io", timeout=5)
-                    org_info = result.json().get("org", "")
-
-                    org_map = {
-                        "uva": "University of Virginia",
-                        "ufl": "University of Florida",
-                        "fiu": "Florida International University",
-                        "famu": "Florida A&M University",
-                        "nyu": "New York University",
-                        "uci": "University of California, Irvine",
-                        "gmu": "George Mason University",
-                        "olemiss": "University of Mississippi",
-                        "sc": "University of South Carolina",
-                    }
-
-                    expected_org = org_map.get(
-                        self.service_key.lower(), "University of Virginia"
-                    )
-                    if expected_org in org_info:
-                        state = True
-                        break  # Definitely connected
-                    else:
-                        # If IP check is successful and org is NOT expected,
-                        # we are definitely disconnected. Return False immediately
-                        # to avoid laggy Cisco CLI state.
-                        return False
-                except Exception:
-                    # If IP check fails, we fall back to other checks
-                    pass
-
-                # 2. Secondary Check: Cisco AnyConnect state
-                # Only trust this if the IP check didn't explicitly tell us we are disconnected
-                # (i.e., if IP check failed or if it's not yet determined)
-                # To avoid the laggy "connected" state during disconnect,
-                # we only set state=True if the IP check didn't already say False.
-                # But wait, if the IP check said False, we should NOT set state=True here.
-
-                # Let's check if the IP check was successful and returned False
-                ip_is_not_uva = False
-                try:
-                    res = requests.get("https://ipinfo.io", timeout=2)
-                    if "University of Virginia" not in res.json().get("org", ""):
-                        ip_is_not_uva = True
-                except:
-                    pass
-
-                if not ip_is_not_uva:
-                    try:
-                        result = str(Shell.run(f"{self.anyconnect} state") or "")
-                        if "state: connected" in result.lower():
-                            state = True
-                        elif "state: disconnected" in result.lower():
-                            state = False
-                    except Exception:
-                        pass
-
-                # 3. Tertiary Check: openconnect process
-                if not state:
-                    for proc in psutil.process_iter(attrs=["pid", "name"]):
-                        if proc.info["name"] == "openconnect":
-                            state = True
-                            break
-
-                if state:
-                    break
-                time.sleep(1)
-
-        elif os_is_linux():
-            result = requests.get("https://ipinfo.io")
-            state = "University of Virginia" in result.json()["org"]
-            if (state is False) and (self.is_docker()):
-                if "openconnect" in Shell.run("ps -u"):
-                    state = True
-
-        if self:
-            Vpn._debug(self, result)
-        return state
-
-    @property
-    def is_uva(self) -> bool:
-        """Checks if the VPN connection is to the University of Virginia (UVA).
-
-        Returns:
-            bool: True if connected to UVA, False otherwise.
-        """
-        state = False
-        if os_is_windows():
-            result = requests.get("https://ipinfo.io")
-            state = "University of Virginia" in result.json()["org"]
-        elif os_is_mac():
-            command = self.anyconnect
-            result = Shell.run(command)
-            state = "virginia.edu" in result
-        elif os_is_linux():
-            result = requests.get("ipinfo.io")
-            state = "University of Virginia" in result.json()["org"]
-        else:
-            result = requests.get("ipinfo.io")
-            state = "University of Virginia" in result.json()["org"]
-
-        self._debug(result)
-        return state
-
-    def connect(self, *args: Any) -> Union[bool, str, None]:
-        """Connects to the VPN using the specified credentials.
-
-        Args:
-            args (tuple): Tuple containing dictionary with user credentials.
-
-        Returns:
-            bool: True if connection is successful, False otherwise.
-        """
-
-        if args:
-            creds = args[0]
-            no_split = args[0]["nosplit"]
-            vpn_name = creds["service"]
-        else:
-            creds = False
-            no_split = True
-            vpn_name = "uva"
-
-        if os_is_windows():
-            if not pyuac.isUserAdmin():
-                Console.error("Please run your terminal as administrator")
-                sys.exit(1)
-
-            # Resolve tools (once)
-            from cloudmesh.vpn.windows import (
-                ensure_choco_bin_on_process_path,
-                get_openconnect_exe,
-            )
-
-            ensure_choco_bin_on_process_path()
-            openconnect_exe = getattr(self, "openconnect", None)
-            if not openconnect_exe or not os.path.exists(openconnect_exe):
-                oc = get_openconnect_exe()
-                if not oc:
-                    oc = win_install()
-                self.openconnect = oc
-                openconnect_exe = oc
-            
-            if not openconnect_exe or not os.path.exists(openconnect_exe):
-                Console.error(f"VPN binary not found at {openconnect_exe}. Please install OpenConnect.")
-                return False
-
-            # mycommand = rf'{self.anyconnect} {organizations[vpn_name]["host"]} --os=win --protocol=anyconnect --user={creds["user"]} --passwd-on-stdin'
-
-            if "user" in creds and "pw" in creds:
-                base = f'{creds["user"]}\n{creds["pw"]}'
-                inner_command = base
-
-                if organizations[vpn_name]["group"]:
-
-                    ### nyu
-                    if no_split:
-                        organizations["nyu"]["group"] = "NYU VPN: All Traffic"
-                    ###
-
-                    # inner_command = rf'\n{creds["user"]}\n{creds["pw"]}\npush\ny'
-                    inner_command = (
-                        organizations[vpn_name]["group"] + "\n" + inner_command
-                    )
-                if organizations[vpn_name]["2fa"]:
-                    inner_command += "\npush\n"
-                if organizations[vpn_name].get("pw_concat", False):
-                    inner_command = f'\n{creds["pw"]},push\ny'
-
-            else:
-                inner_command = ""
-
-            # full_command = rf'printf "{inner_command}" | "{self.anyconnect}" -s connect "{organizations[vpn_name]["host"]}"'
-            script_location = os.path.join(
-                os.path.dirname(__file__), "bin", "split-script-win.js"
-            )
-            # script_location = os.path.abspath(os.path.expanduser('~/cm/cloudmesh-vpn/src/cloudmesh/vpn/bin/split-script-win.js')).replace(os.sep, '/')
-            print("this is script location", script_location)
-
-            if no_split:
-                full_command = f'printf "{inner_command}" | "{self.openconnect}" "{organizations[vpn_name]["host"]}"'
-            else:
-                full_command = f'printf "{inner_command}" | "{self.openconnect}" --script="{script_location}" "{organizations[vpn_name]["host"]}"'
-            # print(full_command)
-            service_started = False
-            while not service_started:
-
-                env_vars = os.environ.copy()
-                domain = organizations.get(vpn_name, {}).get("domain")
-                iprange = organizations.get(vpn_name, {}).get("ip")
-
-                if domain:
-                    env_vars.update(
-                        {
-                            "VPN_DOMAIN": domain,
-                        }
-                    )
-
-                if iprange:
-
-                    env_vars.update(
-                        {
-                            "CISCO_SPLIT_INC": "2",  # the first two route 10.* and 172.16* thru 172.31*
-                            "CISCO_SPLIT_INC_1_ADDR": iprange,
-                            "CISCO_SPLIT_INC_1_MASK": "255.255.0.0",
-                            "CISCO_SPLIT_INC_1_MASKLEN": "16",
-                        }
-                    )
-
-                if organizations[vpn_name]["user"] is True:
-                    Console.warning(
-                        "It will ask you for your password,\n"
-                        "but it is already entered. Just confirm DUO.\n"
-                    )
-                    self.windows_stop_service()
-                    # print(':)', fr'"C:\Program Files\Git\bin\bash.exe" -c "{full_command}"')
-
-                    # r = subprocess.run(fr'"C:\Program Files\Git\bin\bash.exe" -c "{full_command} &"')
-
-                    command = [
-                        openconnect_exe,
-                        organizations[vpn_name]["host"],
-                        f'--user={creds["user"]}',
-                        "--passwd-on-stdin",
-                    ]
-
-                    if not no_split:
-                        command.append(f"--script={script_location}")
-
-                    process = subprocess.Popen(
-                        command,
-                        stdin=subprocess.PIPE,
-                        start_new_session=True,
-                        env=env_vars,
-                    )
-
-                    # Send the password to the openconnect command
-
-                    process.stdin.write(creds["pw"].encode("utf-8") + b"\n")
-                    if organizations[vpn_name]["2fa"]:
-                        process.stdin.write("push".encode("utf-8") + b"\n")
-                        # process.stdin.flush()
-                    process.stdin.flush()
-
-                    service_started = True
-                    return True
-
-                elif organizations[vpn_name]["auth"] == "cert":
-                    try:
-                        r = Shell.run("list-system-keys")
-                    except RuntimeError:
-                        Console.error(
-                            "You do not have the special chocolatey openconnect package, "
-                            "why don't you run choco uninstall openconnect -y, then "
-                            "choco install openconnect -y\nThen try the command again."
-                        )
-                        return False
-
-                    rightful_index = 0
-                    almighty_cert = False
-                    # iterate through r for a line that has University of Virginia in it
-                    for index, line in enumerate(r.splitlines()):
-                        if "University of Virginia" in line:
-                            # i dont like magic numbers
-                            rightful_index = index - 2
-
-                            almighty_cert = (
-                                r.splitlines()[rightful_index]
-                                .split("Cert URI: ")[-1]
-                                .replace(";", r"\;")
-                            )
-
-                    if almighty_cert:
-                        # Define the environment variables
-                        # iprange = organizations.get(vpn_name, {}).get('ip')
-
-                        full_command = (
-                            rf"{self.openconnect} --certificate={almighty_cert} "
-                            rf'{organizations[vpn_name]["host"]}'
-                        )
-                        if not no_split:
-                            full_command += rf' --script="{script_location.replace(os.sep, "/").replace("C:", "/c")}"'
-                            # if iprange:
-
-                            #     env_vars.update({
-                            #         'CISCO_SPLIT_INC': '3', # the first two route 10.* and 172.16* thru 172.31*
-                            #         'CISCO_SPLIT_INC_2_ADDR': iprange,
-                            #         'CISCO_SPLIT_INC_2_MASK': '255.255.0.0',
-                            #         'CISCO_SPLIT_INC_2_MASKLEN': '16',
-                            #     })
-
-                        # full_command = rf'{self.openconnect} --certificate={almighty_cert} ' \
-                        # rf'{organizations[vpn_name]["host"]}'
-                        self.windows_stop_service()
-                        # print(':)', fr'"C:\Program Files\Git\bin\bash.exe" -c "{full_command}"')
-                        r = subprocess.run(
-                            rf'"C:\Program Files\Git\bin\bash.exe" -c "{full_command} &"',
-                            env=env_vars,
-                        )
-
-                        service_started = True
-                        return True
-
-                    else:
-                        Console.error(
-                            "Something went wrong with the list-system-keys parsing\nmaybe you need to install certificate?"
-                        )
-                        return False
-
-                r = pexpect.popen_spawn.PopenSpawn(mycommand, logfile=sys.stdout.buffer)
-                r.timeout = 25
-
-                result = r.expect(
-                    [
-                        pexpect.TIMEOUT,
-                        r"^.*accept.*$",
-                        r"^.*Another Cisco Secure Client.*$",
-                        r"^.*VPN service is unavailable.*$",
-                        r"^.*No valid certificate.*$",
-                        r"^.*sername.*$",
-                        r"^.*'yes' to accept,.*$",
-                        pexpect.EOF,
-                    ]
-                )
-
-                if result == 0:
-                    Console.error("Connection timed out. Please check your network or VPN server status.")
-                    self.windows_stop_service()
-                elif result == 2:
-                    Console.error("Another Cisco Secure Client is already running.")
-                    self.windows_stop_service()
-                elif result == 3:
-                    Console.error("VPN service is currently unavailable on the server.")
-                    self.windows_stop_service()
-                elif result == 4:
-                    Console.error("No valid certificate found. Please check your certificate installation.")
-                    self.windows_stop_service()
-
-                # PW AUTHENTICATION
-                if result == 5:
-                    # import ctypes
-                    if len(r.after.strip()) > len("Username:"):
-                        # this means that default user exists
-                        r.sendline()  # Send a line break to clear any additional input
-                    else:
-                        r.sendline(creds["user"])  # Send the actual username
-
-                    result2 = r.expect([pexpect.TIMEOUT, "^.*ssword.*$", pexpect.EOF])
-                    if result2 == 1:
-                        r.sendline(creds["pw"])
-                    Console.msg("Check DUO")
-
-                    r.timeout = 60
-                    result2 = r.expect(
-                        [
-                            pexpect.TIMEOUT,
-                            "^.*Got CONNECT response: HTTP/1.1 200 OK.*$",
-                            "failed",
-                        ]
-                    )
-                    if result2 == 1:
-                        # r.detach()
-                        service_started = True
-                        Console.msg(
-                            "You are connected but nonblocking has not yet been implemented"
-                        )
-                        r.wait()
-                        return True
-                    if result2 == 2:
-                        import keyring as kr
-
-                        Console.error("Incorrect password.\n" "Deleting password...")
-                        kr.delete_password(vpn_name, "cloudmesh-pw")
-                        kr.delete_password(vpn_name, "cloudmesh-user")
-                        os._exit(1)
-
-                if result == 1:
-                    service_started = True
-                    r.sendline("y")
-                    result2 = r.expect(
-                        [
-                            pexpect.TIMEOUT,
-                            "^.*Connected.*$",
-                            "^.*Downloading Cisco.*$",
-                            pexpect.EOF,
-                        ]
-                    )
-                    if result2 == 1:
-                        Console.ok("Successfully connected")
-
-                        return True
-                    elif result2 == 2:
-                        Console.error(
-                            "Cisco has decided to begin updating!\nPlease finish the update process."
-                        )
-                        return
-
-                elif result == 4:
-                    import ctypes  # An included library with Python install.
-
-                    # 0x1000 keeps it topmost
-                    ctypes.windll.user32.MessageBoxW(
-                        0,
-                        "Your UVA certificate has expired!\nRedirecting you to the appropriate UVA webpage...",
-                        "Oops",
-                        0x1000,
-                    )
-                    Shell.browser("https://in.virginia.edu/installcert")
-                    return False
-                if result == 6:
-                    r.sendline("yes")
-                    result2 = r.expect([pexpect.TIMEOUT, "^.*ssword.*$", pexpect.EOF])
-                    if result2 == 1:
-                        r.sendline(creds["pw"])
-
-        elif os_is_mac():
-
-            # redone
-            # redone
-            # redone
-
-            # if not os.path.isdir(path_expand('~/.ssh/uva')) or not os.path.isfile(path_expand('~/.ssh/uva/mst3k.key')):
-            #     print("Please follow the instructions at https://github.com/cloudmesh/cloudmesh-vpn#linux-and-macos")
-            #     quit(1)
-
-            # from cloudmesh.common.sudo import Sudo
-            # Sudo.password()
-
-            # full_uva = path_expand('~/.ssh/uva')
-            # if not full_uva[-1] == '/':
-            #     full_uva += '/'
-
-            # command = [
-            #     'sudo', 'openconnect', '-b', '-v', '--protocol=anyconnect',
-            #     f'--cafile={full_uva}usher.cer',
-            #     f'--sslkey={full_uva}mst3k.key',
-            #     f'--certificate={full_uva}mst3k.crt',
-            #     'uva-anywhere-1.itc.virginia.edu',
-            #     '-s', 'vpn-slice rivanna.hpc.virginia.edu'
-            # ]
-
-            # process = subprocess.Popen(command)
-
-            # return
-
-            # redone
-            # redone
-            # redone
-
-            inner_command = ""
-
-            if not organizations[vpn_name]["user"]:
-                mycommand = (
-                    rf'{self.anyconnect} connect "{organizations[vpn_name]["host"]}"'
-                )
-
-            else:
-                # full_command = rf'{self.openconnect} {organizations[vpn_name]["host"]} --os=win --protocol=anyconnect --user={creds["user"]}'
-                inner_command = rf'{creds["user"]}\n{creds["pw"]}\ny'
-            if organizations[vpn_name]["2fa"]:
-                inner_command = rf'{creds["user"]}\n{creds["pw"]}\npush\ny'
-            if organizations[vpn_name].get("pw_concat", False):
-                inner_command = (
-                    rf'{creds["user"]}\n{creds["pw"]}\n{creds["pw"]},push\ny'
-                )
-            if organizations[vpn_name]["group"]:
-                # inner_command = rf'\n{creds["user"]}\n{creds["pw"]}\npush\ny'
-                inner_command = rf"\n" + inner_command
-
-            full_command = rf'printf "{inner_command}" | "{self.anyconnect}" -s connect "{organizations[vpn_name]["host"]}"'
-            # print(mycommand)
-            service_started = False
-            while not service_started:
-                if organizations[vpn_name]["user"] is True:
-                    Console.warning(
-                        "It will ask you for your password,\n"
-                        "but it is already entered. Just confirm DUO.\n"
-                    )
-                    # self.windows_stop_service()
-                    os.system(full_command)
-
-                    service_started = True
-                    return True
-
-                r = pexpect.spawn(mycommand, logfile=sys.stdout.buffer)
-                r.timeout = 25
-
-                result = r.expect(
-                    [
-                        pexpect.TIMEOUT,
-                        r"^.*accept.*$",
-                        r"^.*Another Cisco Secure Client.*$",
-                        r"^.*VPN service is unavailable.*$",
-                        r"^.*No valid certificate.*$",
-                        r"^.*sername.*$",
-                        r"^.*'yes' to accept,.*$",
-                        pexpect.EOF,
-                    ]
-                )
-
-                if result == 0:
-                    Console.error("Connection timed out. Please check your network or VPN server status.")
-                    self.close_cisco_secure_client()
-                elif result == 2:
-                    Console.error("Another Cisco Secure Client is already running.")
-                    self.close_cisco_secure_client()
-                elif result == 3:
-                    Console.error("VPN service is currently unavailable on the server.")
-                    self.close_cisco_secure_client()
-                elif result == 4:
-                    Console.error("No valid certificate found. Please check your certificate installation.")
-                    self.close_cisco_secure_client()
-                    # Console.error("Not implemented to stop service on mac")
-                    # return False
-
-                # PW AUTHENTICATION
-                if result == 5:
-                    # import ctypes
-                    if len(r.after.strip()) > len("Username:"):
-                        # this means that default user exists
-                        r.sendline()  # Send a line break to clear any additional input
-                    else:
-                        r.sendline(creds["user"])  # Send the actual username
-
-                    result2 = r.expect([pexpect.TIMEOUT, "^.*ssword.*$", pexpect.EOF])
-                    if result2 == 1:
-                        r.sendline(creds["pw"])
-                    Console.msg("Check DUO")
-
-                    r.timeout = 60
-                    result2 = r.expect(
-                        [
-                            pexpect.TIMEOUT,
-                            "^.*Got CONNECT response: HTTP/1.1 200 OK.*$",
-                            "failed",
-                        ]
-                    )
-                    if result2 == 1:
-                        # r.detach()
-                        service_started = True
-                        Console.msg(
-                            "You are connected but nonblocking has not yet been implemented"
-                        )
-                        r.wait()
-                        return True
-                    if result2 == 2:
-                        import keyring as kr
-
-                        Console.error("Incorrect password.\n" "Deleting password...")
-                        kr.delete_password(vpn_name, "cloudmesh-pw")
-                        kr.delete_password(vpn_name, "cloudmesh-user")
-                        os._exit(1)
-
-                if result == 1:
-                    service_started = True
-                    r.sendline("y")
-                    result2 = r.expect(
-                        [
-                            pexpect.TIMEOUT,
-                            "^.*Connected.*$",
-                            "^.*Downloading Cisco.*$",
-                            pexpect.EOF,
-                        ]
-                    )
-                    if result2 == 1:
-                        Console.ok("Successfully connected")
-
-                        return True
-                    elif result2 == 2:
-                        Console.error(
-                            "Cisco has decided to begin updating!\nPlease finish the update process."
-                        )
-                        return
-
-                elif result == 4:
-                    applescript = """
-                    display dialog "Your UVA certificate has expired!\nRedirecting you to the appropriate UVA webpage..." ¬
-                    with title "Oops" ¬
-                    with icon caution ¬
-                    buttons {"OK"}
-                    """
-
-                    subprocess.call("osascript -e '{}'".format(applescript), shell=True)
-                    Shell.browser("https://in.virginia.edu/installcert")
-                    return False
-                if result == 6:
-                    r.sendline("yes")
-                    result2 = r.expect([pexpect.TIMEOUT, "^.*ssword.*$", pexpect.EOF])
-                    if result2 == 1:
-                        r.sendline(creds["pw"])
-
-            # mycommand = rf'{self.anyconnect} connect "UVA Anywhere"'
-            # service_started = False
-            # while not service_started:
-            #     r = pexpect.spawn(mycommand)
-            #     r.timeout = self.timeout
-            #     sys.stdout.reconfigure(encoding='utf-8')
-            #     r.logfile = sys.stdout.buffer
-            #     result = r.expect([pexpect.TIMEOUT,
-            #                        r"^.*accept.*$",
-            #                        r"^.*Another AnyConnect application.*$",
-            #                        r"^.*The VPN Service is not available.*$",
-            #                        r"^.*No valid certificate.*$",
-            #                        pexpect.EOF])
-            #     if result in [0, 2, 3]:
-            #         Console.error('Please kill the AnyConnect windows.')
-            #         return False
-
-            #     if result == 1:
-            #         service_started = True
-            #         r.sendline('y')
-            #         result2 = r.expect(
-            #             [pexpect.TIMEOUT, "^.*Connected.*$", pexpect.EOF])
-            #         if result2 == 1:
-            #             Console.ok('Successfully connected')
-            #             return True
-
-            #     elif result == 4:
-            #         applescript = """
-            #         display dialog "Your UVA certificate has expired!\nRedirecting you to the appropriate UVA webpage..." ¬
-            #         with title "Oops" ¬
-            #         with icon caution ¬
-            #         buttons {"OK"}
-            #         """
-
-            #         subprocess.call("osascript -e '{}'".format(applescript),
-            #                         shell=True)
-            #         Shell.browser('https://in.virginia.edu/installcert')
-            #         return False
-
-        elif os_is_linux():
-
-            home = os.environ["HOME"]
-
-            if not self.is_docker():
-                print("here you are")
-                from cloudmesh.common.sudo import Sudo
-
-                Sudo.password()
-                command = (
-                    "sudo openconnect -b -v "
-                    "--protocol=anyconnect "
-                    f'--cafile="{home}/.ssh/uva/usher.cer" '
-                    f'--sslkey="{home}/.ssh/uva/user.key" '
-                    f'--certificate="{home}/.ssh/uva/user.crt" '
-                    "uva-anywhere-1.itc.virginia.edu  2>&1 > /dev/null"
-                )
-                print(command)
-                print("that was th ecommand")
-            else:
-                # if docker
-                command = (
-                    "openconnect -b -v "
-                    "--protocol=anyconnect "
-                    f'--cafile="/root/.ssh/uva/usher.cer" '
-                    f'--sslkey="/root/.ssh/uva/user.key" '
-                    f'--certificate="/root/.ssh/uva/user.crt" '
-                    f"-m 1290 "
-                    "uva-anywhere-1.itc.virginia.edu "
-                    "--script='vpn-slice --prevent-idle-timeout rivanna.hpc.virginia.edu "
-                    "biihead1.bii.virginia.edu biihead2.bii.virginia.edu'"
-                )
-
-            self._debug(command)
-
-            try:
-                os.system(command)
-            except Exception as e:
-                print("KKKK")
-                print(e)
-            while not self.enabled():
-                time.sleep(1)
-        # self._debug(result)
-
-    def remove_nrpt_rules_combined(self) -> None:
-        # Collect all domains in a list, prefixed with a dot (e.g. ".ufl.edu")
-        domains = [
-            f".{org['domain']}" for org in organizations.values() if "domain" in org
-        ]
-
-        # Build a single condition string like:
-        # ( $_.Namespace -eq '.ufl.edu' ) -or ( $_.Namespace -eq '.virginia.edu' )
-        conditions = " -or ".join(f"( $_.Namespace -eq '{d}' )" for d in domains)
-
-        # Final PowerShell command
-        # Example:
-        #   Get-DnsClientNrptRule |
-        #       Where-Object { ($_.Namespace -eq '.ufl.edu') -or ($_.Namespace -eq '.virginia.edu') } |
-        #       Remove-DnsClientNrptRule -Force
-        ps_command = (
-            "powershell.exe -Command "
-            f'"Get-DnsClientNrptRule | '
-            f"Where-Object {{ {conditions} }} | "
-            f'Remove-DnsClientNrptRule -Force"'
-        )
-
-        print("Removing NRPT rules for domains:", domains)
-        os.system(ps_command)
-
-    def disconnect(self):
-        """Disconnects from the VPN."""
-        if not self.enabled():
-            if os_is_windows():
-                self.remove_nrpt_rules_combined()
-            Console.ok("VPN is already deactivated")
-            return ""
-
-        if os_is_windows():
-
-            if self.any is True:
-                mycommand = rf'{self.anyconnect} disconnect "{self.service}"'
-                # mycommand = mycommand.replace("\\", "/")
-                r = pexpect.popen_spawn.PopenSpawn(mycommand)
-                sys.stdout.reconfigure(encoding="utf-8")
-                r.logfile = sys.stdout.buffer
-                # time.sleep(5)
-                # r.sendline('y')
-
-                result = r.expect([pexpect.TIMEOUT, r"^.*Disconnected.*$", pexpect.EOF])
-                if result == 1:
-                    Console.ok("Successfully disconnected")
-                return
-
-            self.remove_nrpt_rules_combined()
-            # Define the process name to search for
-            process_name = "openconnect.exe"  # Adjust as needed
-
-            # Iterate through all running processes and terminate those with the specified name
-            for process in psutil.process_iter(attrs=["pid", "name"]):
-                if process.info["name"] == process_name:
-                    print(f"Terminating process {process.info['pid']}")
-                    try:
-                        psutil.Process(process.info["pid"]).terminate()
-                    except psutil.NoSuchProcess:
-                        pass
-
-        elif os_is_mac():
-            # Try Cisco AnyConnect disconnect
-            command = f'{self.anyconnect} disconnect "{self.service}"'
-            Shell.run(command)
-
-            # Also try to kill openconnect just in case
-            # We use '|| true' to ensure the command returns 0 even if no process is found,
-            # preventing Shell.run from raising a RuntimeError.
-            command = f"pkill -SIGINT openconnect &> /dev/null || true"
-            Shell.run(command)
-
-        elif os_is_linux():
-            if not self.is_docker():
-                from cloudmesh.common.sudo import Sudo
-
-                Sudo.password()
-
-                command = f"sudo pkill -SIGINT openconnect &> /dev/null"
-            else:
-                command = f"pkill -SIGINT openconnect &> /dev/null"
-                result = Shell.run(command)
-                command = f"pkill -SIGINT vpn-slice &> /dev/null"
-
-            result = Shell.run(command)
-
-        # Post-disconnection verification
-        if self.enabled():
-            Console.error("VPN is still enabled. Disconnection may have failed.")
-        else:
-            Console.ok("Successfully disconnected from VPN.")
-        # self._debug(result)
-
-    def info(self):
-        """Retrieves information about the current network.
-
-        Returns:
-           str: Information about the current network.
-        """
-        r = Shell.run("curl -s ipinfo.io")
-        return r
-
-    def pw_fetcher(self, org):
-        """Fetches the username and password for the specified organization.
-
-        Args:
-            org (str): The organization name.
-
-        Returns:
-            tuple: Tuple containing username and password.
-        """
-
+    def pw_fetcher(self, org: str):
         if org not in organizations:
             Console.error(f"Unknown service {org}")
             return False
-        else:
-            Console.ok("recognized")
-            if organizations[org]["auth"] == "pw":
-
-                import keyring as kr
+        
+        if organizations[org]["auth"] == "pw":
+            stored_pw = kr.get_password(org, "cloudmesh-pw")
+            if stored_pw is None:
                 import getpass
+                username = input(f"Enter your {org} username: ")
+                while True:
+                    password = getpass.getpass(f"Enter your {org} password: ")
+                    confirm_password = getpass.getpass("Confirm your password: ")
+                    if password == confirm_password: break
+                    print("Passwords do not match. Please try again.")
+                kr.set_password(org, "cloudmesh-pw", password)
+                kr.set_password(org, "cloudmesh-user", username)
+            return kr.get_password(org, "cloudmesh-user"), kr.get_password(org, "cloudmesh-pw")
+        return False
 
-                stored_pw = kr.get_password(org, "cloudmesh-pw")
-                if stored_pw is None:
-                    Console.msg("There is no password stored.")
-                    username = input(f"Enter your {org} username: ")
-
-                    while True:
-                        password = getpass.getpass(f"Enter your {org} password: ")
-                        confirm_password = getpass.getpass("Confirm your password: ")
-
-                        if password == confirm_password:
-                            break
-                        else:
-                            print("Passwords do not match. Please try again.")
-                    # we need to use cloudmesh as the username,
-                    # it is just an arbitrary alias.
-                    # and this is ok since we are allowed to enter
-                    # multiple organizations to the keyring
-                    kr.set_password(org, "cloudmesh-pw", password)
-                    kr.set_password(org, "cloudmesh-user", username)
-
-                return kr.get_password(org, "cloudmesh-user"), kr.get_password(
-                    org, "cloudmesh-pw"
-                )
-
-                # print(kr.get_password(org, "cloudmesh"))
-
-    def pw_clearer(self, org):
-        """Clears the stored credentials for the specified organization.
-
-        Args:
-            org (str): The organization name.
-        """
+    def pw_clearer(self, org: str):
         if org not in organizations:
             Console.error(f"Unknown service {org}")
             return False
