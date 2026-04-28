@@ -284,7 +284,7 @@ class WindowsVpnStrategy(VpnOSStrategy):
                 except psutil.NoSuchProcess:
                     pass
 
-class MacVpnStrategy(VpnOSStrategy):
+class MacCiscoStrategy(VpnOSStrategy):
     def _discover_openconnect(self) -> Optional[str]:
         return self._discover_binary("openconnect", ["/usr/bin/openconnect", "/usr/local/bin/openconnect", "/opt/homebrew/bin/openconnect"])
 
@@ -331,6 +331,33 @@ class MacVpnStrategy(VpnOSStrategy):
             process.wait()
             return True
 
+        # For non-user auth (cert), we still need to handle the command
+        r = pexpect.spawn(mycommand, logfile=sys.stdout.buffer)
+        r.timeout = 25
+        result = r.expect([pexpect.TIMEOUT, r"^.*accept.*$", r"^.*Another Cisco Secure Client.*$", 
+                           r"^.*VPN service is unavailable.*$", r"^.*No valid certificate.*$", 
+                           r"^.*sername.*$", r"^.*'yes' to accept.*$", pexpect.EOF])
+        
+        if result == 5: # PW AUTH
+            if len(r.after.strip()) > len("Username:"): r.sendline()
+            else: r.sendline(creds["user"])
+            if r.expect([pexpect.TIMEOUT, "^.*ssword.*$", pexpect.EOF]) == 1:
+                r.sendline(creds["pw"])
+            r.timeout = 60
+            if r.expect([pexpect.TIMEOUT, "^.*Got CONNECT response: HTTP/1.1 200 OK.*$", "failed"]) == 1:
+                r.wait()
+                return True
+        elif result == 1:
+            r.sendline("y")
+            if r.expect([pexpect.TIMEOUT, "^.*Connected.*$", "^.*Downloading Cisco.*$", pexpect.EOF]) == 1:
+                return True
+        
+        # If we reached here and connected, apply split routes if requested
+        if not no_split:
+            self._manage_routes("add")
+            
+        return False
+
         r = pexpect.spawn(mycommand, logfile=sys.stdout.buffer)
         r.timeout = 25
         result = r.expect([pexpect.TIMEOUT, r"^.*accept.*$", r"^.*Another Cisco Secure Client.*$", 
@@ -352,10 +379,99 @@ class MacVpnStrategy(VpnOSStrategy):
                 return True
         return False
 
+    def _manage_routes(self, action: str) -> None:
+        """Add or remove specific routes for the connected organization."""
+        org_name = self.vpn.service_key.lower()
+        config = organizations.get(org_name, {})
+        ip_range = config.get("ip")
+        if not ip_range:
+            return
+
+        # Convert 128.143.0.0 to 128.143.0.0/16 (assuming /16 for UVA)
+        # In a real scenario, we might want the mask in organizations.yaml
+        network = f"{ip_range}/16"
+        
+        if action == "add":
+            Console.info(f"Adding split route for {org_name}: {network}")
+            # We use sudo to modify routing table
+            Shell.run(f"sudo route add -net {network} 0") # 0 often works as it uses the default VPN interface
+        elif action == "remove":
+            Console.info(f"Removing split route for {org_name}: {network}")
+            Shell.run(f"sudo route delete -net {network}")
+
     def disconnect(self) -> None:
+        self._manage_routes("remove")
         if self.anyconnect:
             Shell.run(f'{self.anyconnect} disconnect "{self.vpn.service}"')
         Shell.run("pkill -SIGINT openconnect &> /dev/null || true")
+
+class MacOpenConnectStrategy(VpnOSStrategy):
+    def _discover_openconnect(self) -> Optional[str]:
+        return self._discover_binary("openconnect", ["/usr/bin/openconnect", "/usr/local/bin/openconnect", "/opt/homebrew/bin/openconnect"])
+
+    def _discover_anyconnect(self) -> Optional[str]:
+        return None
+
+    def is_enabled(self) -> bool:
+        for proc in psutil.process_iter(attrs=["name"]):
+            if proc.info["name"] == "openconnect": return True
+        return False
+
+    def connect(self, creds: Dict[str, Any], vpn_name: str, no_split: bool) -> Union[bool, str, None]:
+        oc_exe = self.openconnect
+        if not oc_exe:
+            Console.error("OpenConnect binary not found. Please install it via Homebrew: brew install openconnect")
+            return False
+        
+        vpn_slice = self._discover_binary("vpn-slice", ["/usr/local/bin/vpn-slice", "/opt/homebrew/bin/vpn-slice"])
+        if not vpn_slice:
+            Console.error("vpn-slice binary not found. Please install it: brew install vpn-slice")
+            return False
+
+        host = organizations[vpn_name]["host"]
+        
+        # Build the command
+        # We use sudo because openconnect needs to create a tun device
+        if not no_split:
+            # Use vpn-slice for split tunneling
+            # We pass the host as a target for vpn-slice to ensure it's routed
+            script_cmd = f"{vpn_slice} {host}"
+            command = f"sudo {oc_exe} -b --protocol=anyconnect --script='{script_cmd}' {host}"
+        else:
+            command = f"sudo {oc_exe} -b --protocol=anyconnect {host}"
+
+        Console.info(f"Connecting via OpenConnect: {command}")
+        
+        # OpenConnect -b runs in background. We need to handle credentials.
+        # For simplicity in this implementation, we assume the user will be prompted 
+        # or we can use the same pexpect logic as Cisco if needed.
+        # However, -b is non-interactive. For interactive auth, we remove -b.
+        
+        # Let's use the interactive approach for consistency with Cisco
+        command = command.replace(" -b", "")
+        
+        try:
+            r = pexpect.spawn(command, logfile=sys.stdout.buffer)
+            r.timeout = 60
+            
+            # Handle auth
+            if r.expect([pexpect.TIMEOUT, "Username:", "Password:", pexpect.EOF]) == 1:
+                r.sendline(creds.get("user", ""))
+            if r.expect([pexpect.TIMEOUT, "Password:", pexpect.EOF]) == 0:
+                r.sendline(creds.get("pw", ""))
+            
+            # Wait for connected
+            if r.expect([pexpect.TIMEOUT, "Connected", "failed", pexpect.EOF]) == 1:
+                return True
+        except Exception as e:
+            Console.error(f"OpenConnect connection failed: {e}")
+            
+        return False
+
+    def disconnect(self) -> None:
+        Console.info("Disconnecting OpenConnect...")
+        Shell.run("sudo pkill -SIGINT openconnect")
+        Shell.run("sudo pkill vpn-slice")
 
 class LinuxVpnStrategy(VpnOSStrategy):
     def _discover_openconnect(self) -> Optional[str]:
@@ -421,7 +537,7 @@ class LinuxVpnStrategy(VpnOSStrategy):
 class Vpn:
     """Context class for managing VPN connections using OS-specific strategies."""
 
-    def __init__(self, service: Optional[str] = None, timeout: Optional[int] = None, debug: bool = False) -> None:
+    def __init__(self, service: Optional[str] = None, timeout: Optional[int] = None, debug: bool = False, provider: Optional[str] = None) -> None:
         self.timeout = timeout or 60
         self.debug = debug
         
@@ -429,7 +545,11 @@ class Vpn:
         if os_is_windows():
             self.strategy = WindowsVpnStrategy(self)
         elif os_is_mac():
-            self.strategy = MacVpnStrategy(self)
+            provider = provider.lower() if provider else "cisco"
+            if provider == "openconnect":
+                self.strategy = MacOpenConnectStrategy(self)
+            else:
+                self.strategy = MacCiscoStrategy(self)
         elif os_is_linux():
             self.strategy = LinuxVpnStrategy(self)
         else:
