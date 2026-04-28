@@ -54,15 +54,13 @@ class VpnOSStrategy(ABC):
         """
         pass
 
-    @abstractmethod
     def get_reset_commands(self, service: Optional[str] = None) -> List[str]:
         """Return a list of shell commands to remove VPN routes."""
-        pass
+        return []
 
-    @abstractmethod
     def reset_routes(self, service: Optional[str] = None) -> bool:
         """Execute the commands to remove VPN routes."""
-        pass
+        return True
 
     def _verify_certs(self, cert_paths: List[str]) -> bool:
         for path in cert_paths:
