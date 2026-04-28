@@ -2,6 +2,22 @@
 
 All notable changes to `cloudmesh-vpn` will be documented in this file.
 
+## [5.0.18] - 2026-04-28
+
+### Added
+- **Keychain Management**: Added `vpn keychain` and `vpn keychain remove` commands to securely manage private key passphrases in the macOS Keychain.
+- **Shorthand Aliases**: Added `vpn +` for connect and `vpn -` for disconnect.
+
+### Changed
+- **Cisco Deprecation**: Deprecated the official Cisco AnyConnect client on macOS in favor of OpenConnect with `vpn-slice`.
+- **Provider Restrictions**: Removed `cisco` as a selectable provider via `--provider` to steer users toward supported OpenConnect strategies.
+- **Documentation**: Updated `README.md` with Cisco uninstall instructions and keychain management guide.
+
+### Fixed
+- **Keychain Strategy**: Fixed `MacOpenConnectKeychainStrategy` to correctly use the `-a` (account) flag and handle missing keychain items gracefully.
+- **Security**: Implemented passphrase piping via `stdin` for OpenConnect to avoid insecure command-line arguments.
+- **Bug Fixes**: Resolved a string decoding `AttributeError` in the keychain error handler and improved `vpn-slice` binary discovery.
+
 ## [5.0.17] - 2026-04-28
 
 ### Added

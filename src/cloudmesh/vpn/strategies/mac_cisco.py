@@ -36,6 +36,7 @@ class MacCiscoStrategy(VpnOSStrategy):
         return False
 
     def connect(self, creds: Dict[str, Any], vpn_name: str, no_split: bool) -> Union[bool, str, None]:
+        Console.warning("The Cisco AnyConnect strategy is deprecated. Please use OpenConnect with vpn-slice for better split-tunneling support.")
         if not organizations[vpn_name]["user"]:
             mycommand = rf'{self.anyconnect} connect "{organizations[vpn_name]["host"]}"'
         else:

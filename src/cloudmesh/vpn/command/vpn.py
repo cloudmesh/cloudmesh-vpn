@@ -25,14 +25,14 @@ class VpnCommand(PluginCommand):
         vpn info
         vpn reset [--service=SERVICE]
         vpn watch [INTERVAL]
-        vpn keychain
+        vpn keychain [remove]
 
           This command manages the vpn connection
 
   Options:
        -v       debug [default: False]
        --choco  installs chocolatey [default: False]
-        --provider=PROVIDER  vpn provider for macOS (cisco, openconnect-decrypted, openconnect-keychain, openconnect) [default: openconnect-decrypted]
+        --provider=PROVIDER  vpn provider for macOS (openconnect-decrypted, openconnect-keychain, openconnect) [default: openconnect-decrypted]
 
           Description:
             vpn info
@@ -61,6 +61,9 @@ class VpnCommand(PluginCommand):
 
             vpn keychain
                 securely adds the VPN private key passphrase to the macOS Keychain.
+
+            vpn keychain remove
+                removes the VPN private key passphrase from the macOS Keychain.
 
 
         """
@@ -174,6 +177,23 @@ class VpnCommand(PluginCommand):
                 Console.info("No service specified, skipping credential cleanup.")
 
         elif arguments.keychain:
+            # Handle 'remove' subcommand
+            arg_list = args.split() if isinstance(args, str) else args
+            if arg_list and 'remove' in arg_list:
+                try:
+                    subprocess.run(
+                        ["security", "delete-generic-password", "-a", "uva", "-s", "uva-key-pass"],
+                        check=True,
+                        capture_output=True,
+                        text=True
+                    )
+                    Console.ok("Successfully removed passphrase from macOS Keychain.")
+                    return True
+                except subprocess.CalledProcessError as e:
+                    Console.error(f"Failed to remove passphrase from keychain: {e.stderr.strip()}")
+                    return False
+
+            # Default: Add passphrase
             import getpass
             Console.info("Setting up VPN Keychain credentials...")
             passphrase = getpass.getpass("Enter your private key passphrase: ")
@@ -193,7 +213,7 @@ class VpnCommand(PluginCommand):
                 return True
             except subprocess.CalledProcessError as e:
                 if "already exists" in e.stderr.lower():
-                    Console.warning("Keychain item already exists. Use 'security delete-generic-password -a uva -s uva-key-pass' to remove it first.")
+                    Console.warning("Keychain item already exists. Use 'cms vpn keychain remove' to remove it first.")
                 else:
                     Console.error(f"Failed to add passphrase to keychain: {e.stderr.strip()}")
                 return False

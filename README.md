@@ -199,6 +199,19 @@ $ cms vpn connect
 
 On macOS, OpenConnect is the default and only supported provider for better split-tunneling via `vpn-slice`. The official Cisco AnyConnect client is no longer supported.
 
+### Keychain Management
+If you are using the `openconnect-keychain` provider, you can manage your private key passphrase securely:
+
+To add your passphrase to the macOS Keychain:
+```bash
+cms vpn keychain
+```
+
+To remove your passphrase from the macOS Keychain:
+```bash
+cms vpn keychain remove
+```
+
 ### Removing Cisco AnyConnect
 If you have the official Cisco AnyConnect client installed, it is recommended to uninstall it to avoid conflicts with OpenConnect. You can do this by running the official uninstaller:
 

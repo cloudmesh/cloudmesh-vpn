@@ -64,9 +64,12 @@ class Vpn:
             elif provider.startswith("openconnect"):
                 from cloudmesh.vpn.strategies.mac_openconnect_pw import MacOpenConnectPwStrategy
                 self.strategy = MacOpenConnectPwStrategy(self)
+            elif provider == "cisco":
+                raise ValueError("The 'cisco' provider is deprecated and no longer supported. Please use an 'openconnect' provider.")
             else:
-                from cloudmesh.vpn.strategies.mac_cisco import MacCiscoStrategy
-                self.strategy = MacCiscoStrategy(self)
+                # Default to openconnect-decrypted if provider is unknown or not specified
+                from cloudmesh.vpn.strategies.mac_openconnect_decrypted import MacOpenConnectDecryptedStrategy
+                self.strategy = MacOpenConnectDecryptedStrategy(self)
             
             # Explicitly log the selected strategy to avoid confusion with imports
             Console.info(f"Selected VPN Strategy: {self.strategy.__class__.__name__}")
