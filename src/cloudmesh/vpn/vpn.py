@@ -3,7 +3,8 @@ import subprocess
 import time
 import sys
 import json
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, Optional, Union, List
+import yaml
 
 import requests
 import keyring as kr
@@ -14,7 +15,7 @@ from rich.table import Table
 from rich.box import ROUNDED
 from cloudmesh.common.systeminfo import os_is_linux, os_is_mac, os_is_windows
 
-from cloudmesh.vpn.organizations import organizations
+from cloudmesh.vpn.organizations import organizations as org_config
 
 from cloudmesh.vpn.strategies.windows import WindowsVpnStrategy
 from cloudmesh.vpn.strategies.mac_cisco import MacCiscoStrategy
@@ -22,6 +23,30 @@ from cloudmesh.vpn.strategies.mac_openconnect_pw import MacOpenConnectPwStrategy
 from cloudmesh.vpn.strategies.mac_openconnect_decrypted import MacOpenConnectDecryptedStrategy
 from cloudmesh.vpn.strategies.mac_openconnect_keychain import MacOpenConnectKeychainStrategy
 from cloudmesh.vpn.strategies.linux import LinuxVpnStrategy
+
+
+def get_organizations() -> Dict[str, Any]:
+    """Load and validate VPN Organization Configurations from YAML."""
+    if not hasattr(get_organizations, "_cache"):
+        org_file = os.path.join(os.path.dirname(__file__), "organizations.yaml")
+        with open(org_file, "r") as f:
+            data = yaml.safe_load(f)
+            orgs = data.get("cloudmesh", {}).get("vpn", {})
+
+        # Validate organization configurations
+        required_keys = ["host", "connection_check"]
+        for org, config in orgs.items():
+            missing_keys = [key for key in required_keys if key not in config]
+            if missing_keys:
+                raise ValueError(
+                    f"Malformed configuration for organization '{org}': "
+                    f"Missing required keys: {', '.join(missing_keys)}"
+                )
+        get_organizations._cache = orgs
+    return get_organizations._cache
+
+# For backward compatibility with existing code that uses 'organizations' globally
+organizations = get_organizations()
 
 
 class Vpn:

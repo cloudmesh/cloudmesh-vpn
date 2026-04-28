@@ -157,9 +157,12 @@ class MacOpenConnectDecryptedStrategy(VpnOSStrategy):
             targets = ip_range if isinstance(ip_range, list) else [ip_range]
             for target in targets:
                 try:
-                    res = subprocess.run(["route", "get", target], capture_output=True, text=True)
-                    if res.returncode == 0:
-                        evidence.append(f"[Routing Table] Route to {target} is active (Org: {org_name})")
+                    route_out = subprocess.check_output(["netstat", "-rn"], text=True)
+                    import re
+                    search_ip = target.split('/')[0].strip()
+                    if re.search(rf"^\s*{re.escape(search_ip)}(\s+|/)", route_out, re.MULTILINE):
+                        display_net = target if '/' in target else f"{target}/16"
+                        evidence.append(f"[Routing Table] Route to {display_net} found in system routing table (netstat -rn) (Org: {org_name})")
                 except Exception:
                     pass
 

@@ -1,6 +1,7 @@
+
 import os
 import subprocess
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Union
 from cloudmesh.common.console import Console
 from cloudmesh.shell.command import PluginCommand
 from cloudmesh.shell.command import command
@@ -157,46 +158,70 @@ class VpnCommand(PluginCommand):
                 Console.info("No service specified, skipping credential cleanup.")
 
         elif arguments.watch:
-            # Determine interval
+            # Determine if we should run once or loop
+            run_once = False
             interval = 1
-            # Look for a number in the args list after 'watch'
+            
             try:
-                if args and 'watch' in args:
-                    idx = args.index('watch')
-                    if idx + 1 < len(args):
-                        interval = int(args[idx + 1])
+                # Ensure args is a list of words
+                arg_list = args.split() if isinstance(args, str) else args
+                if arg_list and 'watch' in arg_list:
+                    idx = arg_list.index('watch')
+                    if idx + 1 < len(arg_list):
+                        val = arg_list[idx + 1]
+                        if val == 'now':
+                            run_once = True
+                        elif val.isdigit():
+                            interval = int(val)
             except (ValueError, IndexError):
                 pass
 
-            Console.info(f"Watching for split-vpn evidence every {interval} second(s). Press Ctrl+C to stop.")
-            try:
-                import time
+            if run_once:
+                # Execute once and exit
                 from datetime import datetime
-                while True:
-                    # Gather all output first to prevent blinking
-                    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                    
-                    # Get git version
-                    try:
-                        git_version = subprocess.check_output(["git", "rev-parse", "--short", "HEAD"], text=True).strip()
-                    except Exception:
-                        git_version = "unknown"
+                now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                try:
+                    git_version = subprocess.check_output(["git", "rev-parse", "--short", "HEAD"], text=True).strip()
+                except Exception:
+                    git_version = "unknown"
+                
+                output = [f"Current Time: {now}", f"Git Version: {git_version}", "-" * 40]
+                evidence = vpn.watch()
+                if evidence:
+                    for item in evidence:
+                        output.append(f"Evidence found: {item}")
+                else:
+                    output.append("No evidence of split-vpn found.")
+                
+                print("\n".join(output))
+                print("-" * 40)
+            else:
+                # Loop mode
+                Console.info(f"Watching for split-vpn evidence every {interval} second(s). Press Ctrl+C to stop.")
+                try:
+                    import time
+                    from datetime import datetime
+                    while True:
+                        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                        try:
+                            git_version = subprocess.check_output(["git", "rev-parse", "--short", "HEAD"], text=True).strip()
+                        except Exception:
+                            git_version = "unknown"
+                            
+                        output = [f"Current Time: {now}", f"Git Version: {git_version}", "-" * 40]
+                        evidence = vpn.watch()
+                        if evidence:
+                            for item in evidence:
+                                output.append(f"Evidence found: {item}")
+                        else:
+                            output.append("No evidence of split-vpn found.")
                         
-                    output = [f"Current Time: {now}", f"Git Version: {git_version}", "-" * 40]
-                    
-                    evidence = vpn.watch()
-                    if evidence:
-                        for item in evidence:
-                            output.append(f"Evidence found: {item}")
-                    else:
-                        output.append("No evidence of split-vpn found.")
-                    
-                    # Clear and print everything at once
-                    os.system('clear')
-                    print("\n".join(output))
-                    
-                    time.sleep(interval)
-            except KeyboardInterrupt:
-                Console.ok("\nStopped watching.")
+                        # Clear screen and reset cursor for loop mode
+                        print("\033[H\033[J", end="")
+                        print("\n".join(output))
+                        print("-" * 40)
+                        time.sleep(interval)
+                except KeyboardInterrupt:
+                    Console.ok("\nStopped watching.")
 
         return ""

@@ -8,6 +8,8 @@ from cloudmesh.common.Shell import Shell, Console
 from cloudmesh.vpn.strategies.base import VpnOSStrategy
 from cloudmesh.vpn.organizations import organizations
 
+print("DEBUG: LOADING LOCAL MAC_CISCO_STRATEGY FILE")
+
 class MacCiscoStrategy(VpnOSStrategy):
     def _discover_openconnect(self) -> Optional[str]:
         return self._discover_binary("openconnect", ["/usr/bin/openconnect", "/usr/local/bin/openconnect", "/opt/homebrew/bin/openconnect"])
@@ -102,6 +104,7 @@ class MacCiscoStrategy(VpnOSStrategy):
 
     def watch(self) -> List[str]:
         """Check for evidence that the VPN is active and using split-routing."""
+        print("DEBUG: Executing local MacCiscoStrategy.watch")
         evidence = []
         
         # 1. Check Processes
@@ -125,7 +128,7 @@ class MacCiscoStrategy(VpnOSStrategy):
         for label in ["vpn-slice", "openconnect", "Cisco VPN"]:
             if label in found_pids:
                 pids_str = f" (PIDs: {', '.join(found_pids[label])})" if label == "Cisco VPN" else ""
-                evidence.append(f"[Process] '{label}' is running{pids_str}")
+                evidence.append(f"[Process] '{label}' found in process list (psutil){pids_str}")
             else:
                 evidence.append(f"[Process] '{label}' is NOT running")
 
@@ -158,11 +161,26 @@ class MacCiscoStrategy(VpnOSStrategy):
                     if re.search(rf"^\s*{re.escape(search_ip)}(\s+|/)", route_out, re.MULTILINE):
                         # Format the display network (ensure it has /16)
                         display_net = ip if '/' in ip else f"{ip}/16"
-                        evidence.append(f"[Routing Table] Route to {display_net} is active (Org: {org_name})")
+                        evidence.append(f"[Routing Table] Route to {display_net} found in system routing table (netstat -rn) (Org: {org_name})")
         except Exception:
             pass
 
         return evidence
+
+    def get_reset_commands(self, service: Optional[str] = None) -> List[str]:
+        """Return the commands needed to reset the routing table."""
+        org_name = (service or self.vpn.service_key).lower()
+        config = organizations.get(org_name, {})
+        ip_range = config.get("ip")
+        if not ip_range:
+            return []
+        network = f"{ip_range}/16"
+        return [f"sudo route delete -net {network} 0"]
+
+    def reset_routes(self, service: Optional[str] = None) -> bool:
+        """Reset the routing table for the given service."""
+        self._manage_routes("remove")
+        return True
 
     def disconnect(self) -> None:
         self._manage_routes("remove")
