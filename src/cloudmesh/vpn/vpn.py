@@ -17,13 +17,6 @@ from cloudmesh.common.systeminfo import os_is_linux, os_is_mac, os_is_windows
 
 from cloudmesh.vpn.organizations import organizations as org_config
 
-from cloudmesh.vpn.strategies.windows import WindowsVpnStrategy
-from cloudmesh.vpn.strategies.mac_cisco import MacCiscoStrategy
-from cloudmesh.vpn.strategies.mac_openconnect_pw import MacOpenConnectPwStrategy
-from cloudmesh.vpn.strategies.mac_openconnect_decrypted import MacOpenConnectDecryptedStrategy
-from cloudmesh.vpn.strategies.mac_openconnect_keychain import MacOpenConnectKeychainStrategy
-from cloudmesh.vpn.strategies.linux import LinuxVpnStrategy
-
 
 def get_organizations() -> Dict[str, Any]:
     """Load and validate VPN Organization Configurations from YAML."""
@@ -58,18 +51,27 @@ class Vpn:
         
         # Strategy Selection
         if os_is_windows():
+            from cloudmesh.vpn.strategies.windows import WindowsVpnStrategy
             self.strategy = WindowsVpnStrategy(self)
         elif os_is_mac():
-            provider = provider.lower() if provider else "openconnect"
+            provider = provider.lower() if provider else "openconnect-decrypted"
             if provider == "openconnect-decrypted":
+                from cloudmesh.vpn.strategies.mac_openconnect_decrypted import MacOpenConnectDecryptedStrategy
                 self.strategy = MacOpenConnectDecryptedStrategy(self)
             elif provider == "openconnect-keychain":
+                from cloudmesh.vpn.strategies.mac_openconnect_keychain import MacOpenConnectKeychainStrategy
                 self.strategy = MacOpenConnectKeychainStrategy(self)
             elif provider.startswith("openconnect"):
+                from cloudmesh.vpn.strategies.mac_openconnect_pw import MacOpenConnectPwStrategy
                 self.strategy = MacOpenConnectPwStrategy(self)
             else:
+                from cloudmesh.vpn.strategies.mac_cisco import MacCiscoStrategy
                 self.strategy = MacCiscoStrategy(self)
+            
+            # Explicitly log the selected strategy to avoid confusion with imports
+            Console.info(f"Selected VPN Strategy: {self.strategy.__class__.__name__}")
         elif os_is_linux():
+            from cloudmesh.vpn.strategies.linux import LinuxVpnStrategy
             self.strategy = LinuxVpnStrategy(self)
         else:
             raise NotImplementedError("OS is not supported")
@@ -175,12 +177,40 @@ class Vpn:
                     os._exit(1)
 
     def info(self) -> str:
-        """Display current IP information in a rich table."""
+        """Display current IP information in a rich table using multiple fallback providers."""
+        providers = [
+            {"url": "https://ipinfo.io/json", "type": "json"},
+            {"url": "https://ifconfig.me/all.json", "type": "json"},
+            {"url": "https://api.ipify.org?format=json", "type": "json"},
+            {"url": "https://icanhazip.com", "type": "text"},
+        ]
+
+        data = {}
+        for provider in providers:
+            try:
+                res = requests.get(provider["url"], timeout=5)
+                if res.status_code == 429:
+                    Console.warning(f"Provider {provider['url']} rate limited (429). Trying next...")
+                    continue
+                res.raise_for_status()
+                
+                if provider["type"] == "json":
+                    data = res.json()
+                else:
+                    data = {"ip": res.text.strip()}
+                
+                # If we got a valid IP, we can stop
+                if data.get("ip") or data.get("query"):
+                    break
+            except Exception as e:
+                Console.error(f"Provider {provider['url']} failed: {type(e).__name__}: {e}")
+                continue
+
+        if not data:
+            Console.error("All IP information providers failed to return a valid IP address.")
+            return ""
+
         try:
-            res = requests.get("https://ipinfo.io", timeout=5)
-            res.raise_for_status()
-            data = res.json()
-            
             table = Table(title="IP Information", box=ROUNDED, show_header=True, header_style="bold magenta")
             table.add_column("Field", style="cyan", width=15)
             table.add_column("Value", style="cyan")
@@ -191,7 +221,7 @@ class Vpn:
             RichConsole().print(table)
             return json.dumps(data, indent=2)
         except Exception as e:
-            Console.error(f"Failed to fetch IP info: {e}")
+            Console.error(f"Failed to render IP info table: {e}")
             return ""
 
     def pw_fetcher(self, org: str):

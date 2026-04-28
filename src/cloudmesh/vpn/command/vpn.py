@@ -29,7 +29,7 @@ class VpnCommand(PluginCommand):
   Options:
        -v       debug [default: False]
        --choco  installs chocolatey [default: False]
-        --provider=PROVIDER  vpn provider for macOS (cisco, openconnect) [default: openconnect]
+        --provider=PROVIDER  vpn provider for macOS (cisco, openconnect-decrypted, openconnect-keychain, openconnect) [default: openconnect-decrypted]
 
           Description:
             vpn info

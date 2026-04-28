@@ -54,8 +54,12 @@ class MacOpenConnectDecryptedStrategy(VpnOSStrategy):
 
         host = organizations[vpn_name]["host"]
         
-        from cloudmesh.common.sudo import Sudo
-        Sudo.password()
+        # Warm up sudo to cache the system password
+        try:
+            subprocess.run(["sudo", "-v"], check=True)
+        except subprocess.CalledProcessError:
+            Console.error("Sudo validation failed. Please run 'sudo -v' manually first.")
+            return False
 
         script_arg = ""
         if not no_split:
@@ -69,7 +73,8 @@ class MacOpenConnectDecryptedStrategy(VpnOSStrategy):
 
         user_val = creds.get('user')
         if not isinstance(user_val, str):
-            user_val = organizations.get(vpn_name, {}).get('user')
+            org_config = organizations.get(vpn_name, {})
+            user_val = org_config.get('username') or org_config.get('user')
         
         if not isinstance(user_val, str):
             import getpass
@@ -86,26 +91,77 @@ class MacOpenConnectDecryptedStrategy(VpnOSStrategy):
                 Console.error("cert_path is required for openconnect-decrypted provider (default ~/.ssh/uva/decrypted_user.pem not found)")
                 return False
         
+        # Use standard sudo since password is now cached via sudo -v
         command = f"sudo {oc_exe} --protocol=anyconnect -u {user} -c {path_expand(cert_path)} {script_arg} {host}"
         Console.info(f"Connecting via OpenConnect (Decrypted): {command}")
         
+        # To make the VPN persist in the background, we use subprocess.Popen with start_new_session=True.
+        # Since we might need to provide a password, we use --passwd-on-stdin.
+        
+        final_command = command
+        pw = creds.get("pw")
+        if pw:
+            final_command = f"{command} --passwd-on-stdin"
+        
         try:
-            # Use pty.fork to create a new process with a controlling terminal
-            # This satisfies sudo's requirement for a TTY
-            pid, fd = pty.fork()
-            if pid == 0:
-                # Child process
-                os.execlp("sh", "sh", "-c", command)
-            else:
-                # Parent process
-                os.close(fd)
-                self._pid = pid
-                time.sleep(5)
-                if self.is_enabled():
-                    return True
+            # Construct the command as a list to avoid shell=True and TTY issues with sudo.
+            cmd_list = ["sudo", oc_exe, "--protocol=anyconnect", "-u", user, "-c", path_expand(cert_path)]
+            if script_arg:
+                # script_arg is like "--script='...'"
+                # We need to split it into two elements: "--script" and the actual script
+                # Since script_arg was constructed as f"--script='{vs_exe} -v {slice_target}'"
+                # we'll just manually add the parts.
+                vs_exe_path = self.vpn_slice
+                org_config = organizations.get(vpn_name, {})
+                ip_range = org_config.get("ip")
+                if isinstance(ip_range, list):
+                    slice_target = " ".join(ip_range)
                 else:
-                    Console.error("OpenConnect failed to connect or terminated unexpectedly.")
-                    return False
+                    slice_target = ip_range if ip_range else host
+                
+                cmd_list.extend(["--script", f"{vs_exe_path} -v {slice_target}"])
+            
+            cmd_list.append(host)
+            
+            if pw:
+                cmd_list.append("--passwd-on-stdin")
+            
+            # Use subprocess.Popen without start_new_session=True to maintain TTY association for sudo.
+            proc = subprocess.Popen(
+                cmd_list,
+                stdin=subprocess.PIPE,
+                stdout=None, # Inherit stdout
+                stderr=None, # Inherit stderr
+                text=True
+            )
+            
+            # Move the process to its own process group so it doesn't receive SIGHUP when the parent exits.
+            try:
+                os.setpgid(proc.pid, 0)
+            except (ProcessLookupError, PermissionError):
+                pass # Ignore if we can't set pgid (e.g. due to sudo privilege change)
+            
+            if pw:
+                proc.stdin.write(pw + "\n")
+                proc.stdin.flush()
+            
+            # Wait a bit to ensure the process has started.
+            time.sleep(2)
+            
+            # Find the PID of the actual openconnect process.
+            for p in psutil.process_iter(['pid', 'name']):
+                if p.info['name'] == 'openconnect':
+                    self._pid = p.info['pid']
+            
+            if self._pid:
+                return True
+            else:
+                Console.error("OpenConnect process not found after starting.")
+                return False
+                
+        except Exception as e:
+            Console.error(f"Connection failed: {e}")
+            return False
         except Exception as e:
             Console.error(f"Connection failed: {e}")
             return False
@@ -128,10 +184,21 @@ class MacOpenConnectDecryptedStrategy(VpnOSStrategy):
             pids = [str(proc.pid) for proc in psutil.process_iter(['name']) if 'openconnect' in proc.info['name']]
             if pids:
                 evidence.append(f"[Process] 'openconnect' is running (PIDs: {', '.join(pids)})")
-                # Also check if it's running with vpn-slice script
+                # Extract routes from the vpn-slice command line
                 out = subprocess.check_output(["ps", "aux"], text=True)
-                if "vpn-slice" in out:
-                    evidence.append("[OpenConnect] Running with vpn-slice script")
+                for line in out.splitlines():
+                    if "vpn-slice" in line:
+                        # Extract IP ranges (e.g., 128.143.0.0/16) using regex
+                        import re
+                        routes = re.findall(r'\d{1,3}(?:\.\d{1,3}){3}(?:/\d{1,2})?', line)
+                        if routes:
+                            # Filter out the vpn-slice binary path if it contains an IP-like string
+                            # and keep only the target routes
+                            filtered_routes = [r for r in routes if r not in line.split('/bin/')[0]]
+                            evidence.append(f"[OpenConnect] Routes configured via vpn-slice: {', '.join(filtered_routes)}")
+                        else:
+                            evidence.append("[OpenConnect] Running with vpn-slice but no routes detected in command line")
+                        break
             else:
                 evidence.append("[Process] 'openconnect' is NOT running")
         except Exception:
@@ -187,7 +254,10 @@ class MacOpenConnectDecryptedStrategy(VpnOSStrategy):
             Shell.run("sudo pkill -SIGINT openconnect")
         
         from cloudmesh.common.Shell import Shell
-        Shell.run("sudo pkill vpn-slice")
+        try:
+            Shell.run("sudo pkill vpn-slice")
+        except Exception:
+            pass # Ignore if vpn-slice is already gone
 
     def get_reset_commands(self, service: Optional[str] = None) -> List[str]:
         commands = []

@@ -8,8 +8,6 @@ from cloudmesh.common.Shell import Shell, Console
 from cloudmesh.vpn.strategies.base import VpnOSStrategy
 from cloudmesh.vpn.organizations import organizations
 
-print("DEBUG: LOADING LOCAL MAC_CISCO_STRATEGY FILE")
-
 class MacCiscoStrategy(VpnOSStrategy):
     def _discover_openconnect(self) -> Optional[str]:
         return self._discover_binary("openconnect", ["/usr/bin/openconnect", "/usr/local/bin/openconnect", "/opt/homebrew/bin/openconnect"])
