@@ -151,10 +151,12 @@ class WindowsVpnStrategy(VpnOSStrategy):
     def _stop_vpn_services(self) -> None:
         Console.warning("Restarting vpnagent to avoid conflict")
         for program in ["vpnagent.exe", "vpncli.exe"]:
-            try:
-                os.system(f"taskkill /im {program} /F")
-            except Exception:
-                pass
+            subprocess.run(
+                ["taskkill", "/im", program, "/F"],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                check=False,
+            )
         try:
             Shell.run("net stop csc_vpnagent")
         except Exception:
@@ -163,10 +165,12 @@ class WindowsVpnStrategy(VpnOSStrategy):
             Shell.run("net start csc_vpnagent")
         except Exception:
             pass
-        try:
-            os.system("taskkill /im csc_ui.exe /F")
-        except Exception:
-            pass
+        subprocess.run(
+            ["taskkill", "/im", "csc_ui.exe", "/F"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            check=False,
+        )
 
     def _remove_nrpt_rules(self) -> None:
         domains = [f".{org['domain']}" for org in organizations.values() if "domain" in org]
@@ -241,16 +245,20 @@ class WindowsVpnStrategy(VpnOSStrategy):
             almighty_cert = None
             for index, line in enumerate(r.splitlines()):
                 if "University of Virginia" in line:
-                    almighty_cert = r.splitlines()[index - 2].split("Cert URI: ")[-1].replace(";", r"\;")
+                    almighty_cert = r.splitlines()[index - 2].split("Cert URI: ")[-1]
                     break
 
             if almighty_cert:
-                full_command = rf"{self.openconnect} --certificate={almighty_cert} {organizations[vpn_name]['host']}"
+                command = [oc_exe, f"--certificate={almighty_cert}", organizations[vpn_name]["host"]]
                 if not no_split:
-                    full_command += rf' --script="{script_location.replace(os.sep, "/").replace("C:", "/c")}"'
+                    command.append(f"--script={script_location}")
                 self._stop_vpn_services()
-                subprocess.run(rf'"C:\Program Files\Git\bin\bash.exe" -c "{full_command} &"', env=env_vars)
-                return True
+                try:
+                    subprocess.Popen(command, start_new_session=True, env=env_vars)
+                    return True
+                except OSError as e:
+                    Console.error(f"Failed to start OpenConnect: {e}")
+                    return False
             
             Console.error("Failed to parse system keys.")
             return False

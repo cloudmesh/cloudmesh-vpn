@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Union
 from cloudmesh.common.console import Console
 from cloudmesh.shell.command import PluginCommand
 from cloudmesh.shell.command import command
