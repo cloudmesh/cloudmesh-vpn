@@ -540,7 +540,7 @@ class Vpn:
             data = res.json()
             
             table = Table(title="IP Information", box=ROUNDED, show_header=True, header_style="bold magenta")
-            table.add_column("Field", style="dim", width=15)
+            table.add_column("Field", style="cyan", width=15)
             table.add_column("Value", style="cyan")
 
             for key, value in data.items():
