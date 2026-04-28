@@ -1,4 +1,5 @@
 import os
+import subprocess
 from typing import Any, Dict, Optional
 from cloudmesh.common.console import Console
 from cloudmesh.shell.command import PluginCommand
@@ -174,7 +175,14 @@ class VpnCommand(PluginCommand):
                 while True:
                     # Gather all output first to prevent blinking
                     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                    output = [f"Current Time: {now}", "-" * 40]
+                    
+                    # Get git version
+                    try:
+                        git_version = subprocess.check_output(["git", "rev-parse", "--short", "HEAD"], text=True).strip()
+                    except Exception:
+                        git_version = "unknown"
+                        
+                    output = [f"Current Time: {now}", f"Git Version: {git_version}", "-" * 40]
                     
                     evidence = vpn.watch()
                     if evidence:
