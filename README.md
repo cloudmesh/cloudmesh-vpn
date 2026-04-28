@@ -197,11 +197,15 @@ To connect use
 $ cms vpn connect 
 ```
 
-On macOS, OpenConnect is the default provider for better split-tunneling. You can still choose the official Cisco client if needed:
+On macOS, OpenConnect is the default and only supported provider for better split-tunneling via `vpn-slice`. The official Cisco AnyConnect client is no longer supported.
+
+### Removing Cisco AnyConnect
+If you have the official Cisco AnyConnect client installed, it is recommended to uninstall it to avoid conflicts with OpenConnect. You can do this by running the official uninstaller:
 
 ```bash
-$ cms vpn connect --provider=cisco
+sudo /opt/cisco/anyconnect/bin/vpn_uninstall.sh
 ```
+If the uninstaller is not found, you can manually remove the application from your `/Applications` folder.
 
 
 To disconnect
@@ -223,7 +227,7 @@ gs
 
 ## Manual Page
 
-<!-- START-MANUAL -->
+<!add uninstall instructions for -- START-MANUAL -->
 ```
 Command vpn
 ===========
