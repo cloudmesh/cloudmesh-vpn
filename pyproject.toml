@@ -60,6 +60,10 @@ dependencies = [
     "keyring",
     "pexpect",
     "pytest",
+    "requests",
+    "rich",
+    "psutil",
+    "pyyaml",
 ]
 
 [project.urls]

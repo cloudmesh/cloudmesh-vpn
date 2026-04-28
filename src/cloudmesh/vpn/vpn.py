@@ -3,6 +3,7 @@ import shutil
 import subprocess
 import time
 import sys
+import json
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional, Union
 
@@ -13,6 +14,9 @@ from pexpect.popen_spawn import PopenSpawn
 
 from cloudmesh.common.Shell import Shell
 from cloudmesh.common.Shell import Console
+from rich.console import Console as RichConsole
+from rich.table import Table
+from rich.box import ROUNDED
 from cloudmesh.common.util import path_expand
 from cloudmesh.common.systeminfo import os_is_linux, os_is_mac, os_is_windows
 
@@ -23,19 +27,48 @@ import keyring as kr
 if os_is_windows():
     import pyuac
 
-# Load VPN Organization Configurations from YAML
-org_file = os.path.join(os.path.dirname(__file__), "organizations.yaml")
-with open(org_file, "r") as f:
-    data = yaml.safe_load(f)
-    organizations = data.get("cloudmesh", {}).get("vpn", {})
+def get_organizations() -> Dict[str, Any]:
+    """Load and validate VPN Organization Configurations from YAML."""
+    if not hasattr(get_organizations, "_cache"):
+        org_file = os.path.join(os.path.dirname(__file__), "organizations.yaml")
+        with open(org_file, "r") as f:
+            data = yaml.safe_load(f)
+            orgs = data.get("cloudmesh", {}).get("vpn", {})
+
+        # Validate organization configurations
+        required_keys = ["host", "connection_check"]
+        for org, config in orgs.items():
+            missing_keys = [key for key in required_keys if key not in config]
+            if missing_keys:
+                raise ValueError(
+                    f"Malformed configuration for organization '{org}': "
+                    f"Missing required keys: {', '.join(missing_keys)}"
+                )
+        get_organizations._cache = orgs
+    return get_organizations._cache
+
+# For backward compatibility with existing code that uses 'organizations' globally
+organizations = get_organizations()
 
 class VpnOSStrategy(ABC):
     """Abstract Base Class for OS-specific VPN strategies."""
 
     def __init__(self, vpn_context: 'Vpn'):
         self.vpn = vpn_context
-        self.openconnect = self._discover_openconnect()
-        self.anyconnect = self._discover_anyconnect()
+        self._openconnect = None
+        self._anyconnect = None
+
+    @property
+    def openconnect(self) -> Optional[str]:
+        if self._openconnect is None:
+            self._openconnect = self._discover_openconnect()
+        return self._openconnect
+
+    @property
+    def anyconnect(self) -> Optional[str]:
+        if self._anyconnect is None:
+            self._anyconnect = self._discover_anyconnect()
+        return self._anyconnect
 
     @abstractmethod
     def _discover_openconnect(self) -> Optional[str]:
@@ -56,6 +89,40 @@ class VpnOSStrategy(ABC):
     @abstractmethod
     def is_enabled(self) -> bool:
         pass
+
+    def _verify_certs(self, cert_paths: List[str]) -> bool:
+        for path in cert_paths:
+            expanded_path = path_expand(path)
+            if not os.path.exists(expanded_path):
+                Console.error(f"Certificate file not found: {expanded_path}")
+                return False
+        return True
+
+    def _check_ip_info(self) -> bool:
+        """Check if the current public IP belongs to the configured organization."""
+        try:
+            # Reduced timeout to 2s to prevent CLI lag
+            res = requests.get("https://ipinfo.io", timeout=2)
+            res.raise_for_status()
+            org_info = res.json().get("org", "")
+            checks = organizations.get(self.vpn.service_key.lower(), {}).get("connection_check", [])
+            return any(check in org_info for check in checks)
+        except (requests.RequestException, ValueError):
+            return False
+
+    def get_current_org(self) -> Optional[str]:
+        """Identify which configured organization is currently connected."""
+        try:
+            res = requests.get("https://ipinfo.io", timeout=2)
+            res.raise_for_status()
+            org_info = res.json().get("org", "")
+            for org_name, config in organizations.items():
+                checks = config.get("connection_check", [])
+                if any(check in org_info for check in checks):
+                    return org_name
+        except (requests.RequestException, ValueError):
+            pass
+        return None
 
     def _discover_binary(self, binary_name: str, common_paths: List[str]) -> Optional[str]:
         path = shutil.which(binary_name)
@@ -110,6 +177,7 @@ class WindowsVpnStrategy(VpnOSStrategy):
             f"Where-Object {{ {conditions} }} | "
             f'Remove-DnsClientNrptRule -Force"'
         )
+        Console.info(f"Removing NRPT rules for domains: {domains}")
         os.system(ps_command)
 
     def is_enabled(self) -> bool:
@@ -128,7 +196,7 @@ class WindowsVpnStrategy(VpnOSStrategy):
         ensure_choco_bin_on_process_path()
         
         oc_exe = self.openconnect or get_openconnect_exe() or win_install()
-        self.openconnect = oc_exe
+        self._openconnect = oc_exe
 
         if not oc_exe or not os.path.exists(oc_exe):
             Console.error(f"VPN binary not found. Please install OpenConnect.")
@@ -203,7 +271,16 @@ class WindowsVpnStrategy(VpnOSStrategy):
         for process in psutil.process_iter(attrs=["pid", "name"]):
             if process.info["name"] == "openconnect.exe":
                 try:
-                    psutil.Process(process.info["pid"]).terminate()
+                    pid = process.info["pid"]
+                    Console.info(f"Terminating process {pid}")
+                    p = psutil.Process(pid)
+                    p.terminate()
+                    # Wait up to 3 seconds for process to terminate
+                    try:
+                        p.wait(timeout=3)
+                    except psutil.TimeoutExpired:
+                        Console.warning(f"Process {pid} did not terminate, killing it.")
+                        p.kill()
                 except psutil.NoSuchProcess:
                     pass
 
@@ -215,33 +292,23 @@ class MacVpnStrategy(VpnOSStrategy):
         return self._discover_binary("vpn", ["/opt/cisco/secureclient/bin/vpn", "/opt/cisco/anyconnect/bin/vpn"])
 
     def is_enabled(self) -> bool:
-        for _ in range(5):
+        # Prioritize fast local checks over slow network requests
+        # 1. Check for openconnect process (fastest)
+        for proc in psutil.process_iter(attrs=["name"]):
+            if proc.info["name"] == "openconnect": return True
+        
+        # 2. Check anyconnect state (fast)
+        if self.anyconnect:
             try:
-                res = requests.get("https://ipinfo.io", timeout=5)
-                org_info = res.json().get("org", "")
-                org_map = {
-                    "uva": "University of Virginia", "ufl": "University of Florida",
-                    "fiu": "Florida International University", "famu": "Florida A&M University",
-                    "nyu": "New York University", "uci": "University of California, Irvine",
-                    "gmu": "George Mason University", "olemiss": "University of Mississippi",
-                    "sc": "University of South Carolina",
-                }
-                expected_org = org_map.get(self.vpn.service_key.lower(), "University of Virginia")
-                if expected_org in org_info: return True
-                return False
+                result = Shell.run(f"{self.anyconnect} state")
+                if "state: connected" in result.lower(): return True
             except Exception:
                 pass
+        
+        # 3. Check public IP (slowest)
+        if self._check_ip_info():
+            return True
             
-            if self.anyconnect:
-                try:
-                    result = Shell.run(f"{self.anyconnect} state")
-                    if "state: connected" in result.lower(): return True
-                except Exception:
-                    pass
-            
-            for proc in psutil.process_iter(attrs=["name"]):
-                if proc.info["name"] == "openconnect": return True
-            time.sleep(1)
         return False
 
     def connect(self, creds: Dict[str, Any], vpn_name: str, no_split: bool) -> Union[bool, str, None]:
@@ -256,8 +323,12 @@ class MacVpnStrategy(VpnOSStrategy):
             if organizations[vpn_name]["group"]:
                 inner_command = rf"\n" + inner_command
             
-            full_command = rf'printf "{inner_command}" | "{self.anyconnect}" -s connect "{organizations[vpn_name]["host"]}"'
-            os.system(full_command)
+            # Use subprocess.Popen to avoid passing credentials in the command string
+            command = [self.anyconnect, "-s", "connect", organizations[vpn_name]["host"]]
+            process = subprocess.Popen(command, stdin=subprocess.PIPE, text=True)
+            process.stdin.write(inner_command + "\n")
+            process.stdin.close()
+            process.wait()
             return True
 
         r = pexpect.spawn(mycommand, logfile=sys.stdout.buffer)
@@ -294,37 +365,45 @@ class LinuxVpnStrategy(VpnOSStrategy):
         return self._discover_binary("vpn", ["/opt/cisco/anyconnect/bin/vpn"])
 
     def is_enabled(self) -> bool:
-        try:
-            res = requests.get("https://ipinfo.io", timeout=5)
-            if "University of Virginia" in res.json().get("org", ""): return True
-        except Exception:
-            pass
-        
+        # Prioritize local process check over network request
         if os.path.exists("/.dockerenv") or (os.path.isfile("/proc/self/cgroup") and "docker" in open("/proc/self/cgroup").read()):
             if "openconnect" in Shell.run("ps -u"): return True
+        
+        if self._check_ip_info():
+            return True
+            
         return False
 
     def connect(self, creds: Dict[str, Any], vpn_name: str, no_split: bool) -> Union[bool, str, None]:
         home = os.environ.get("HOME", "")
+        cert_paths = [
+            f"{home}/.ssh/uva/usher.cer" if not (os.path.exists("/.dockerenv") or (os.path.isfile("/proc/self/cgroup") and "docker" in open("/proc/self/cgroup").read())) else "/root/.ssh/uva/usher.cer",
+            f"{home}/.ssh/uva/user.key" if not (os.path.exists("/.dockerenv") or (os.path.isfile("/proc/self/cgroup") and "docker" in open("/proc/self/cgroup").read())) else "/root/.ssh/uva/user.key",
+            f"{home}/.ssh/uva/user.crt" if not (os.path.exists("/.dockerenv") or (os.path.isfile("/proc/self/cgroup") and "docker" in open("/proc/self/cgroup").read())) else "/root/.ssh/uva/user.crt",
+        ]
+        if not self._verify_certs(cert_paths):
+            return False
+
         if not (os.path.exists("/.dockerenv") or (os.path.isfile("/proc/self/cgroup") and "docker" in open("/proc/self/cgroup").read())):
             from cloudmesh.common.sudo import Sudo
             Sudo.password()
             command = (
                 "sudo openconnect -b -v --protocol=anyconnect "
-                f'--cafile="{home}/.ssh/uva/usher.cer" '
-                f'--sslkey="{home}/.ssh/uva/user.key" '
-                f'--certificate="{home}/.ssh/uva/user.crt" '
+                f'--cafile="{cert_paths[0]}" '
+                f'--sslkey="{cert_paths[1]}" '
+                f'--certificate="{cert_paths[2]}" '
                 "uva-anywhere-1.itc.virginia.edu 2>&1 > /dev/null"
             )
         else:
             command = (
                 "openconnect -b -v --protocol=anyconnect "
-                f'--cafile="/root/.ssh/uva/usher.cer" '
-                f'--sslkey="/root/.ssh/uva/user.key" '
-                f'--certificate="/root/.ssh/uva/user.crt" -m 1290 '
+                f'--cafile="{cert_paths[0]}" '
+                f'--sslkey="{cert_paths[1]}" '
+                f'--certificate="{cert_paths[2]}" -m 1290 '
                 "uva-anywhere-1.itc.virginia.edu "
                 "--script='vpn-slice --prevent-idle-timeout rivanna.hpc.virginia.edu biihead1.bii.virginia.edu biihead2.bii.virginia.edu'"
             )
+        Console.info(f"Executing command: {command}")
         os.system(command)
         while not self.is_enabled():
             time.sleep(1)
@@ -388,9 +467,27 @@ class Vpn:
             no_split = True
             vpn_name = "uva"
 
-        return self.strategy.connect(creds, vpn_name, no_split)
+        # Capture state before action
+        before_org = self.strategy.get_current_org()
+        
+        result = self.strategy.connect(creds, vpn_name, no_split)
+        
+        if result:
+            # Capture state after action
+            after_org = self.strategy.get_current_org()
+            if before_org and after_org and before_org != after_org:
+                Console.ok(f"Switched from {before_org} to {after_org}")
+            elif after_org:
+                Console.ok(f"Connected to {after_org}")
+            else:
+                Console.warning("Connection command succeeded, but could not verify organization via IP.")
+        
+        return result
 
     def disconnect(self) -> None:
+        # Capture state before action
+        before_org = self.strategy.get_current_org()
+        
         if not self.enabled():
             Console.ok("VPN is already deactivated")
             return
@@ -400,7 +497,10 @@ class Vpn:
         if self.enabled():
             Console.error("VPN is still enabled. Disconnection may have failed.")
         else:
-            Console.ok("Successfully disconnected from VPN.")
+            if before_org:
+                Console.ok(f"Disconnected from {before_org}")
+            else:
+                Console.ok("Successfully disconnected from VPN.")
 
     def anyconnect_checker(self, choco: bool = False) -> None:
         """Checks if the VPN client is installed, installs it if needed.
@@ -433,7 +533,24 @@ class Vpn:
                     os._exit(1)
 
     def info(self) -> str:
-        return Shell.run("curl -s ipinfo.io")
+        """Display current IP information in a rich table."""
+        try:
+            res = requests.get("https://ipinfo.io", timeout=5)
+            res.raise_for_status()
+            data = res.json()
+            
+            table = Table(title="IP Information", box=ROUNDED, show_header=True, header_style="bold magenta")
+            table.add_column("Field", style="dim", width=15)
+            table.add_column("Value", style="cyan")
+
+            for key, value in data.items():
+                table.add_row(key, str(value))
+            
+            RichConsole().print(table)
+            return json.dumps(data, indent=2)
+        except Exception as e:
+            Console.error(f"Failed to fetch IP info: {e}")
+            return ""
 
     def pw_fetcher(self, org: str):
         if org not in organizations:
@@ -449,7 +566,7 @@ class Vpn:
                     password = getpass.getpass(f"Enter your {org} password: ")
                     confirm_password = getpass.getpass("Confirm your password: ")
                     if password == confirm_password: break
-                    print("Passwords do not match. Please try again.")
+                    Console.error("Passwords do not match. Please try again.")
                 kr.set_password(org, "cloudmesh-pw", password)
                 kr.set_password(org, "cloudmesh-user", username)
             return kr.get_password(org, "cloudmesh-user"), kr.get_password(org, "cloudmesh-pw")
