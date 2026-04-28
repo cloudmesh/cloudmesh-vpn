@@ -2,6 +2,19 @@
 
 All notable changes to `cloudmesh-vpn` will be documented in this file.
 
+## [5.0.17] - 2026-04-28
+
+### Added
+- `vpn watch` command for real-time monitoring of VPN processes and routes.
+
+### Changed
+- macOS connections now run as persistent background processes.
+- Improved `sudo` handling and connection visibility on macOS.
+- Added `username` support in `organizations.yaml`.
+
+### Fixed
+- Fixed `Permission denied` and crash issues during macOS connection and disconnection.
+
 ## [5.0.16] - 2026-04-27
 
 ### Added

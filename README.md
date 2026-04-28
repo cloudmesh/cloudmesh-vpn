@@ -66,11 +66,12 @@ cms vpn connect --service=ufl
 # possible services are uva fiu ufl
 ```
 
-Note- currently the output will be piped to the terminal
-and will end in response to `Ctrl + C`
-consider executing the following:
+Note: On macOS, the connection now runs as a persistent background process. 
+You can monitor the connection status and active routes using:
 
-`nohup cms vpn connect --service=ufl >/dev/null 2>&1`
+```bash
+cms vpn watch
+```
 
 To disconnect from current VPN, run
 
@@ -218,7 +219,7 @@ For a detailed list of changes, see [CHANGELOG.md](CHANGELOG.md).
 An eraly verion of this was in part developed to support the NSF
 CyberTraining: CIC: CyberTraining for Students and Technologies
 from Generation Z with the award numbers 1829704 and 2200409.
-
+gs
 
 ## Manual Page
 
