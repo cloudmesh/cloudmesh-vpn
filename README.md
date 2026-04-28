@@ -83,6 +83,7 @@ To see info regarding your connection, run
 ```bash
 cms vpn info
 ```
+The `info` command now displays a formatted table with your current IP and location.
 
 ## Troubleshooting
 
@@ -202,6 +203,10 @@ To disconnect
 $ cms vpn disconnect
 ```
 
+## Changelog
+
+For a detailed list of changes, see [CHANGELOG.md](CHANGELOG.md).
+
 ## Acknowledgments
 
 This work was in part funded by the NSF
@@ -233,20 +238,21 @@ Command vpn
 
   Description:
     vpn info
-       prints out information about your current location as
-       obtained via the vpn connection.
+       displays current IP and location information in a 
+       formatted table obtained via the vpn connection.
 
     vpn status
         prints out "True" if the vpn is connected
         and "False" if it is not.
 
     vpn disconnect
-        disconnects from the VPN.
+        disconnects from the VPN and reports the deactivated organization.
 
     vpn connect [--service=SERVICE]
         connects to the UVA Anywhere VPN.
 
         If the VPN is already connected a warning is shown.
+        Reports the transition between organizations if applicable.
 
         You can connect to other VPNs while specifying their names
         as given to you by the VPN provider with e service option.

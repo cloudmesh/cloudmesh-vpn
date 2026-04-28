@@ -91,10 +91,10 @@ class VpnCommand(PluginCommand):
             )
             if vpn.enabled():
                 Console.ok("ok")
-                print(vpn.info())
+                vpn.info()
             else:
                 Console.error("failed")
-                print(vpn.info())
+                vpn.info()
 
         elif arguments.disconnect:
             Console.ok("Disconnecting ... ")
@@ -111,13 +111,13 @@ class VpnCommand(PluginCommand):
                 Console.ok("ok")
             else:
                 Console.error("failed")
-            print(vpn.info())
+            vpn.info()
 
         elif arguments.status:
             print(vpn.enabled())
 
         elif arguments.info:
-            print(vpn.info())
+            vpn.info()
 
         elif arguments.reset:
             if not arguments['service']:
