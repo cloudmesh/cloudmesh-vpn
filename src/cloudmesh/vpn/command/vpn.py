@@ -1,3 +1,4 @@
+from typing import Any, Dict, Optional
 from cloudmesh.common.console import Console
 from cloudmesh.shell.command import PluginCommand
 from cloudmesh.shell.command import command
@@ -8,7 +9,7 @@ class VpnCommand(PluginCommand):
 
     # noinspection PyUnusedLocal
     @command
-    def do_vpn(self, args, arguments):
+    def do_vpn(self, args: Any, arguments: Any) -> Optional[Union[bool, str]]:
         """
         ::
 
@@ -123,18 +124,5 @@ class VpnCommand(PluginCommand):
                 Console.error("Please specify a service to clear its credentials")
                 return
             vpn.pw_clearer(arguments['service'])
-
-        # elif arguments.install:
-        #     found = Shell.which("openconnect")
-        #
-        #     if found is None:
-        #         Console.ok("Installing")
-        #         if yn_choice("This command is only supported on Ubunto. Continue"):
-        #             os.system("sudo apt-get install openconnect")
-        #         else:
-        #             Console.error("cms vpn is only supported on Linux.")
-        #
-        #     else:
-        #         Console.error("vpn client is already installed")
 
         return ""

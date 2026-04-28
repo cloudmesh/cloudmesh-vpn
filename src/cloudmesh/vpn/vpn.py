@@ -1,4 +1,6 @@
 import os
+import shutil
+from typing import Any, Dict, List, Optional, Union
 
 import psutil
 import requests
@@ -158,7 +160,29 @@ Classes:
 class Vpn:
     """A class for managing VPN connections and disconnections."""
 
-    def __init__(self, service=None, timeout=None, debug=False):
+    def _discover_binary(self, binary_name: str, common_paths: List[str]) -> Optional[str]:
+        """Discovers the path to a binary by checking PATH and common installation paths.
+
+        Args:
+            binary_name (str): The name of the binary to search for.
+            common_paths (List[str]): A list of common paths to check.
+
+        Returns:
+            Optional[str]: The path to the binary if found, otherwise None.
+        """
+        # 1. Check if it's in the system PATH
+        path = shutil.which(binary_name)
+        if path:
+            return path
+
+        # 2. Check common installation paths
+        for p in common_paths:
+            if os.path.exists(p) and os.path.isfile(p) and os.access(p, os.X_OK):
+                return p
+
+        return None
+
+    def __init__(self, service: Optional[str] = None, timeout: Optional[int] = None, debug: bool = False) -> None:
         """Initializes the Vpn object.
 
         Args:
@@ -171,18 +195,30 @@ class Vpn:
         else:
             self.timeout = timeout
 
-        self.openconnect = r"openconnect"
+        self.debug = debug
+
+        # Automatic Binary Discovery
+        self.openconnect = self._discover_binary("openconnect", [
+            "/usr/bin/openconnect",
+            "/usr/local/bin/openconnect",
+            "/opt/homebrew/bin/openconnect",
+        ])
 
         if os_is_windows():
             system_drive = os.environ.get("SYSTEMDRIVE", "C:")
-            self.anyconnect = rf"{system_drive}\Program Files (x86)\Cisco\Cisco Secure Client\vpncli.exe"
-
+            self.anyconnect = self._discover_binary("vpncli.exe", [
+                rf"{system_drive}\Program Files (x86)\Cisco\Cisco Secure Client\vpncli.exe",
+                rf"{system_drive}\Program Files (x86)\Cisco\Cisco AnyConnect Secure Mobility Client\vpncli.exe",
+            ])
         elif os_is_mac():
-
-            self.anyconnect = "/opt/cisco/secureclient/bin/vpn"
-
+            self.anyconnect = self._discover_binary("vpn", [
+                "/opt/cisco/secureclient/bin/vpn",
+                "/opt/cisco/anyconnect/bin/vpn",
+            ])
         elif os_is_linux():
-            self.anyconnect = "/opt/cisco/anyconnect/bin/vpn"
+            self.anyconnect = self._discover_binary("vpn", [
+                "/opt/cisco/anyconnect/bin/vpn",
+            ])
         else:
             raise NotImplementedError("OS is not yet supported for anyconnect")
 
@@ -191,12 +227,18 @@ class Vpn:
             self.service_key = "uva"
             self.service = "UVA Anywhere"
         else:
-            self.service_key = service
+            service_lower = service.lower()
+            if service_lower not in organizations:
+                available = ", ".join(organizations.keys())
+                raise ValueError(
+                    f"Invalid VPN service '{service}'. Available services are: {available}"
+                )
+            self.service_key = service_lower
             self.service = service
 
         self.any = False
 
-    def anyconnect_checker(self, choco=False):
+    def anyconnect_checker(self, choco: bool = False) -> None:
         """Checks if the AnyConnect VPN client is installed, installs it if needed.
 
         Args:
@@ -231,7 +273,7 @@ class Vpn:
                     )
                     os._exit(1)
 
-    def close_cisco_secure_client(self):
+    def close_cisco_secure_client(self) -> None:
         try:
             # AppleScript command to quit the Cisco Secure Client application
             applescript_command = 'tell application "Cisco Secure Client" to quit'
@@ -241,7 +283,7 @@ class Vpn:
         except Exception as e:
             print(f"An error occurred: {e}")
 
-    def windows_stop_service(self):
+    def windows_stop_service(self) -> None:
         """Restarts the vpnagent service on Windows to avoid conflicts."""
 
         Console.warning("Restarting vpnagent to avoid conflict")
@@ -249,33 +291,32 @@ class Vpn:
         for program in ["vpnagent.exe", "vpncli.exe"]:
             try:
                 r = os.system(f"taskkill /im {program} /F")
-            except:
+            except Exception:
                 pass
 
         try:
             r = Shell.run("net stop csc_vpnagent")
-        except:
+        except Exception:
             pass
 
         try:
             r = Shell.run("net start csc_vpnagent")
-        except:
+        except Exception:
             pass
 
         try:
             r = os.system("taskkill /im csc_ui.exe /F")
-        except:
+        except Exception:
             pass
 
-    def is_docker(self):
+    def is_docker(self) -> bool:
         path = "/proc/self/cgroup"
         return (
             os.path.exists("/.dockerenv")
-            or os.path.isfile(path)
-            and any("docker" in line for line in open(path))
+            or (os.path.isfile(path) and any("docker" in line for line in open(path)))
         )
 
-    def _debug(self, msg):
+    def _debug(self, msg: str) -> None:
         """Prints debug messages if debug mode is enabled.
 
         Args:
@@ -284,7 +325,7 @@ class Vpn:
         if self.debug:
             print(msg)
 
-    def is_user_auth(self, org):
+    def is_user_auth(self, org: str) -> bool:
         """Checks if the specified organization requires user authentication.
 
         Args:
@@ -295,7 +336,7 @@ class Vpn:
         """
         return organizations[org.lower()]["user"]
 
-    def enabled(self):
+    def enabled(self) -> bool:
         state = False
         result = ""
         if os_is_windows():
@@ -399,7 +440,7 @@ class Vpn:
         return state
 
     @property
-    def is_uva(self):
+    def is_uva(self) -> bool:
         """Checks if the VPN connection is to the University of Virginia (UVA).
 
         Returns:
@@ -423,7 +464,7 @@ class Vpn:
         self._debug(result)
         return state
 
-    def connect(self, *args):
+    def connect(self, *args: Any) -> Union[bool, str, None]:
         """Connects to the VPN using the specified credentials.
 
         Args:
@@ -432,15 +473,6 @@ class Vpn:
         Returns:
             bool: True if connection is successful, False otherwise.
         """
-
-        # args[0] is dict with
-        # keys named user, pw, and service.
-
-        # temporarily commented to allow for dual
-
-        # if self.enabled():
-        # Console.ok("VPN is already activated")
-        # return ""
 
         if args:
             creds = args[0]
@@ -465,13 +497,15 @@ class Vpn:
             ensure_choco_bin_on_process_path()
             openconnect_exe = getattr(self, "openconnect", None)
             if not openconnect_exe or not os.path.exists(openconnect_exe):
-                # Try to discover (works whether we just installed or it existed before)
                 oc = get_openconnect_exe()
                 if not oc:
-                    # As a last resort, install and get path
                     oc = win_install()
                 self.openconnect = oc
                 openconnect_exe = oc
+            
+            if not openconnect_exe or not os.path.exists(openconnect_exe):
+                Console.error(f"VPN binary not found at {openconnect_exe}. Please install OpenConnect.")
+                return False
 
             # mycommand = rf'{self.anyconnect} {organizations[vpn_name]["host"]} --os=win --protocol=anyconnect --user={creds["user"]} --passwd-on-stdin'
 
@@ -651,7 +685,17 @@ class Vpn:
                     ]
                 )
 
-                if result in [0, 2, 3]:
+                if result == 0:
+                    Console.error("Connection timed out. Please check your network or VPN server status.")
+                    self.windows_stop_service()
+                elif result == 2:
+                    Console.error("Another Cisco Secure Client is already running.")
+                    self.windows_stop_service()
+                elif result == 3:
+                    Console.error("VPN service is currently unavailable on the server.")
+                    self.windows_stop_service()
+                elif result == 4:
+                    Console.error("No valid certificate found. Please check your certificate installation.")
                     self.windows_stop_service()
 
                 # PW AUTHENTICATION
@@ -816,7 +860,17 @@ class Vpn:
                     ]
                 )
 
-                if result in [0, 2, 3]:
+                if result == 0:
+                    Console.error("Connection timed out. Please check your network or VPN server status.")
+                    self.close_cisco_secure_client()
+                elif result == 2:
+                    Console.error("Another Cisco Secure Client is already running.")
+                    self.close_cisco_secure_client()
+                elif result == 3:
+                    Console.error("VPN service is currently unavailable on the server.")
+                    self.close_cisco_secure_client()
+                elif result == 4:
+                    Console.error("No valid certificate found. Please check your certificate installation.")
                     self.close_cisco_secure_client()
                     # Console.error("Not implemented to stop service on mac")
                     # return False
@@ -980,7 +1034,7 @@ class Vpn:
                 time.sleep(1)
         # self._debug(result)
 
-    def remove_nrpt_rules_combined(self):
+    def remove_nrpt_rules_combined(self) -> None:
         # Collect all domains in a list, prefixed with a dot (e.g. ".ufl.edu")
         domains = [
             f".{org['domain']}" for org in organizations.values() if "domain" in org
@@ -1066,6 +1120,12 @@ class Vpn:
                 command = f"pkill -SIGINT vpn-slice &> /dev/null"
 
             result = Shell.run(command)
+
+        # Post-disconnection verification
+        if self.enabled():
+            Console.error("VPN is still enabled. Disconnection may have failed.")
+        else:
+            Console.ok("Successfully disconnected from VPN.")
         # self._debug(result)
 
     def info(self):
