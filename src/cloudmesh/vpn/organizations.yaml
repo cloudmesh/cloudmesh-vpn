@@ -1,0 +1,98 @@
+cloudmesh:
+  vpn:
+    ufl:
+      auth: pw
+      name: Gatorlink VPN
+      host: vpn.ufl.edu
+      user: true
+      2fa: false
+      group: false
+      domain: cise.ufl.edu
+      connection_check:
+        - University of Florida
+        - UFL
+    uva:
+      auth: cert
+      name: UVA Anywhere
+      host: uva-anywhere-1.itc.virginia.edu
+      user: false
+      2fa: false
+      group: false
+      ip: 128.143.0.0
+      domain: virginia.edu
+      connection_check:
+        - University of Virginia
+        - UVA
+    fiu:
+      auth: pw
+      name: vpn.fiu.edu
+      host: vpn.fiu.edu
+      user: true
+      2fa: true
+      group: false
+      ip: 131.94.0.0
+      domain: fiu.edu
+      connection_check:
+        - Florida International University
+        - FIU
+    famu:
+      auth: pw
+      name: vpn.famu.edu
+      host: vpn.famu.edu
+      user: true
+      2fa: false
+      group: false
+      connection_check:
+        - Florida A&M University
+        - FAMU
+    nyu:
+      auth: pw
+      name: vpn.nyu.edu
+      host: vpn.nyu.edu
+      user: true
+      2fa: true
+      group: "NYU VPN: NYU-NET Traffic Only"
+      connection_check:
+        - New York University
+        - NYU
+    uci:
+      auth: pw
+      name: vpn.uci.edu
+      host: vpn.uci.edu
+      user: true
+      2fa: false
+      group: true
+      connection_check:
+        - University of California, Irvine
+        - UCI
+    gmu:
+      auth: pw
+      name: vpn.gmu.edu
+      host: vpn.gmu.edu
+      user: true
+      2fa: false
+      group: false
+      connection_check:
+        - George Mason University
+        - GMU
+    olemiss:
+      auth: pw
+      name: vpn.olemiss.edu
+      host: vpn.olemiss.edu
+      user: true
+      2fa: false
+      group: false
+      connection_check:
+        - University of Mississippi
+        - Ole Miss
+    sc:
+      auth: pw
+      name: vpn.sc.edu
+      host: vpn.sc.edu
+      user: true
+      2fa: false
+      group: true
+      pw_concat: true
+      connection_check:
+        - University of South Carolina
+        - USC
