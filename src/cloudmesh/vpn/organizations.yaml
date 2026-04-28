@@ -18,7 +18,13 @@ cloudmesh:
       user: false
       2fa: false
       group: false
-      ip: 128.143.0.0
+      keychain: true
+      cert:
+        - ~/.ssh/uva/user.pem
+      ip: 
+        - rivanna.hpc.virginia.edu 
+        - 128.143.0.0/16 
+        - 137.54.0.0/16
       domain: virginia.edu
       connection_check:
         - University of Virginia
@@ -30,7 +36,8 @@ cloudmesh:
       user: true
       2fa: true
       group: false
-      ip: 131.94.0.0
+      ip: 
+        - 131.94.0.0
       domain: fiu.edu
       connection_check:
         - Florida International University

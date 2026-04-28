@@ -114,7 +114,7 @@ $ which openconnect
 If it is not available, on macOS do:
 
 ```bash
-brew install openconnect
+brew install openconnect vpn-slice
 ```
 
 you can install it on Ubuntu with 
@@ -196,6 +196,12 @@ To connect use
 $ cms vpn connect 
 ```
 
+On macOS, OpenConnect is the default provider for better split-tunneling. You can still choose the official Cisco client if needed:
+
+```bash
+$ cms vpn connect --provider=cisco
+```
+
 
 To disconnect
 
@@ -209,10 +215,9 @@ For a detailed list of changes, see [CHANGELOG.md](CHANGELOG.md).
 
 ## Acknowledgments
 
-This work was in part funded by the NSF
+An eraly verion of this was in part developed to support the NSF
 CyberTraining: CIC: CyberTraining for Students and Technologies
 from Generation Z with the award numbers 1829704 and 2200409.
-
 
 
 ## Manual Page
