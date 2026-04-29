@@ -6,7 +6,7 @@ from importlib import resources
 def get_organizations() -> Dict[str, Any]:
     """Load and validate VPN Organization Configurations from YAML."""
     if not hasattr(get_organizations, "_cache"):
-        user_config = os.path.expanduser("~/cloudmesh/vpn/vpn.yaml")
+        user_config = os.path.expanduser("~/.config/cloudmesh/vpn.yaml")
         if os.path.exists(user_config):
             with open(user_config, "r") as f:
                 data = yaml.safe_load(f)
