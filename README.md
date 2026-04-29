@@ -1,25 +1,13 @@
 # cloudmesh-vpn
 
-This library is a wrapper around [openconnect](https://gitlab.com/openconnect/openconnect)
-that provides added functionality. Additional features include secure password saving
-that uses the native-OS keyring, as well as vpn-slicing, which only sends traffic
-destined for school servers through the VPN and keeps other traffic out of the tunnel.
-Perhaps most conveniently, this library provides an easy way to install openconnect via
-a package manager (chocolatey for Windows, homebrew for macOS) without requiring any other
-dependencies besides Python. The package manager is installed for you on-the-fly which installs
-openconnect.
+This library is a wrapper around [openconnect](https://gitlab.com/openconnect/openconnect)with added functionality. Additional features include secure password saving that uses the native-OS keyring, as well as vpn-slicing, which only sends traffic destined for school servers through the VPN and keeps other traffic out of the tunnel. It also allows an easy easy way to install openconnect via a package manager (chocolatey for Windows, homebrew for macOS) without requiring any other dependencies besides Python. The package manager is installed for you on-the-fly which installs openconnect.
 
 | School  | Tested | VPN-Slicing |
 | ------- | ------ | ----------- |
-| UVA&nbsp; <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/University_of_Virginia_Rotunda_logo.svg/2007px-University_of_Virginia_Rotunda_logo.svg.png" alt="uva" height="15"/> | ✅ | ✅ |
+| UVA&nbsp; <img src="https://upload.wikimedia.org/wikipedia/commons/d/dd/University_of_Virginia_Rotunda_logo.svg" alt="uva" height="15"/> | ✅ | ✅ |
 | FIU&nbsp; <img src="https://digicdn.fiu.edu/core/_assets/images/logo-top.svg" alt="fiu" width="25"/> | ✅ | ✅ |
 | UFL&nbsp; <img src="https://www.ufl.edu/wp-content/uploads/sites/5/2022/12/UF-logo-500x500-1.png" alt="uf" height="15"/> | ✅ | ✅ |
-| FAMU | ❌ | ❌ |
 | NYU | ✅ | ❌ |
-| UCI | ❌ | ❌ |
-| GMU | ❌ | ❌ |
-| OleMiss | ❌ | ❌ |
-| SC | ❌ | ❌ |
 
 ## Install
 
@@ -86,11 +74,20 @@ cms vpn info
 ```
 The `info` command now displays a formatted table with your current IP and location.
 
+
+you can also on Mac use in addition 
+
+```bash
+cms vpn watch now
+```
+
+
+
 ## Troubleshooting
 
 Sometimes DNS lookup is broken entirely
 
-To fix:
+To fix this on Windows use:
 
 ```powershell
 Get-DnsClientNrptRule | Remove-DnsClientNrptRule -Force
@@ -245,40 +242,55 @@ gs
 Command vpn
 ===========
 
-::
-
   Usage:
-        vpn connect [--service=SERVICE] [--timeout=TIMEOUT] [-v] [--choco]
+        vpn connect [--service=SERVICE] [--timeout=TIMEOUT] [-v] [--choco] [--nosplit] [--provider=PROVIDER]
+        vpn + [--service=SERVICE] [--timeout=TIMEOUT] [-v] [--choco] [--nosplit] [--provider=PROVIDER]
         vpn disconnect [-v]
+        vpn - [-v]
         vpn status [-v]
         vpn info
+        vpn reset [--service=SERVICE]
+        vpn watch [INTERVAL]
+        vpn keychain [remove]
 
-  This command manages the vpn connection
+          This command manages the vpn connection
 
   Options:
-      -v       debug [default: False]
-      --choco  installs chocolatey [default: False]
+       -v       debug [default: False]
+       --choco  installs chocolatey [default: False]
+        --provider=PROVIDER  vpn provider for macOS (openconnect-decrypted, openconnect-keychain, openconnect) [default: openconnect-decrypted]
 
-  Description:
-    vpn info
-       displays current IP and location information in a 
-       formatted table obtained via the vpn connection.
+          Description:
+            vpn info
+               prints out information about your current location as
+               obtained via the vpn connection.
 
-    vpn status
-        prints out "True" if the vpn is connected
-        and "False" if it is not.
+            vpn status
+                prints out "True" if the vpn is connected
+                and "False" if it is not.
 
-    vpn disconnect
-        disconnects from the VPN and reports the deactivated organization.
+            vpn disconnect
+            vpn -
+                disconnects from the VPN.
 
-    vpn connect [--service=SERVICE]
-        connects to the UVA Anywhere VPN.
+            vpn connect [--service=SERVICE]
+            vpn +
+                connects to the UVA Anywhere VPN.
 
-        If the VPN is already connected a warning is shown.
-        Reports the transition between organizations if applicable.
+                If the VPN is already connected a warning is shown.
 
-        You can connect to other VPNs while specifying their names
-        as given to you by the VPN provider with e service option.
+                You can connect to other VPNs while specifying their names
+                as given to you by the VPN provider with e service option.
+
+            vpn reset [--service=SERVICE]
+                clears the credentials for the VPN service
+
+            vpn keychain
+                securely adds the VPN private key passphrase to the macOS Keychain.
+
+            vpn keychain remove
+                removes the VPN private key passphrase from the macOS Keychain.
+
 
 
 ```
