@@ -107,6 +107,13 @@ see the **FAQ** section for a detailed setup guide.
 
 ## Usage
 
+### Connection Profiles vs. Organizations
+
+Before connecting, it is helpful to understand the difference between **Organizations** and **Profiles**:
+
+*   **Organizations:** These are global, predefined VPN service configurations (like host addresses and connection checks) defined in the library. They represent the *where* and *how* of the VPN service itself.
+*   **Profiles:** These are user-specific shortcuts stored locally on your machine. A profile maps a friendly name (e.g., `work` or `school`) to a specific organization and your preferred connection options (like the provider or split-tunneling preference). They represent *your preference* for connecting to a service.
+
 ### Connecting to VPN
 
 To connect to the UVA Anywhere VPN, run
@@ -123,6 +130,22 @@ For other organizations, use the `--service` flag:
 cms vpn connect --service=ufl
 # Supported services: uva, fiu, ufl
 ```
+
+#### Using Profiles
+You can create your own profiles to avoid typing long flags every time:
+
+```bash
+# Create a profile named 'work' for UVA using the keychain provider
+cms vpn profile add work --service=uva --provider=openconnect-keychain
+
+# Connect using that profile
+cms vpn connect --profile=work
+```
+
+**Profile Management Commands:**
+- `cms vpn profile list`: List all your saved profiles.
+- `cms vpn profile add <name> [--service=SERVICE] [--provider=PROVIDER] [--nosplit]`: Create a new profile.
+- `cms vpn profile remove <name>`: Delete a profile.
 
 ### VPN-Slicing (Split Tunneling)
 
@@ -289,18 +312,19 @@ Gemma4.
 Command vpn
 ===========
 
-  Usage:
-        vpn connect [--service=SERVICE] [--timeout=TIMEOUT] 
-                    [-v] [--choco] [--nosplit] [--provider=PROVIDER]
-        vpn + [--service=SERVICE] [--timeout=TIMEOUT] 
-              [-v] [--choco] [--nosplit] [--provider=PROVIDER]
+   Usage:
+         vpn connect [--service=SERVICE] [--timeout=TIMEOUT] 
+                     [-v] [--choco] [--nosplit] [--provider=PROVIDER] [--profile=PROFILE]
+         vpn + [--service=SERVICE] [--timeout=TIMEOUT] 
+               [-v] [--choco] [--nosplit] [--provider=PROVIDER] [--profile=PROFILE]
         vpn disconnect [-v]
         vpn - [-v]
         vpn status [-v]
         vpn info
-        vpn reset [--service=SERVICE]
-        vpn watch [INTERVAL]
-        vpn keychain [remove]
+         vpn reset [--service=SERVICE]
+         vpn watch [INTERVAL]
+         vpn keychain [remove]
+         vpn profile [add|remove|list]
 
           This command manages the vpn connection
 
@@ -338,8 +362,11 @@ Command vpn
             vpn keychain
                 securely adds the VPN private key passphrase to the macOS Keychain.
 
-            vpn keychain remove
-                removes the VPN private key passphrase from the macOS Keychain.
+             vpn keychain remove
+                 removes the VPN private key passphrase from the macOS Keychain.
+
+             vpn profile [add|remove|list]
+                 manages user-specific connection profiles.
 
 
 

@@ -16,16 +16,17 @@ class VpnCommand(PluginCommand):
         """
         ::
 
-  Usage:
-        vpn connect [--service=SERVICE] [--timeout=TIMEOUT] [-v] [--choco] [--nosplit] [--provider=PROVIDER]
-        vpn + [--service=SERVICE] [--timeout=TIMEOUT] [-v] [--choco] [--nosplit] [--provider=PROVIDER]
-        vpn disconnect [-v]
-        vpn - [-v]
-        vpn status [-v]
-        vpn info
-        vpn reset [--service=SERVICE]
-        vpn watch [INTERVAL]
-        vpn keychain [remove]
+   Usage:
+         vpn connect [--service=SERVICE] [--timeout=TIMEOUT] [-v] [--choco] [--nosplit] [--provider=PROVIDER] [--profile=PROFILE]
+         vpn + [--service=SERVICE] [--timeout=TIMEOUT] [-v] [--choco] [--nosplit] [--provider=PROVIDER] [--profile=PROFILE]
+         vpn disconnect [-v]
+         vpn - [-v]
+         vpn status [-v]
+         vpn info
+         vpn reset [--service=SERVICE]
+         vpn watch [INTERVAL]
+         vpn keychain [remove]
+         vpn profile [add|remove|list] [--name=NAME] [--service=SERVICE] [--provider=PROVIDER] [--nosplit]
 
           This command manages the vpn connection
 
@@ -68,7 +69,7 @@ class VpnCommand(PluginCommand):
 
         """
 
-        map_parameters(arguments, "service", "timeout", "choco", "nosplit", "provider")
+        map_parameters(arguments, "service", "timeout", "choco", "nosplit", "provider", "profile")
 
         # Support shorthand aliases: + for connect, - for disconnect
         arg_list = args.split() if isinstance(args, str) else args
@@ -79,27 +80,45 @@ class VpnCommand(PluginCommand):
                 arguments.disconnect = True
 
         from cloudmesh.vpn.vpn import Vpn
-        vpn = Vpn(arguments.service,
+        from cloudmesh.vpn import profiles
+
+        # Handle profile override
+        service = arguments.service
+        provider = arguments.provider
+        nosplit = arguments.nosplit
+
+        if arguments.profile and not (args and 'profile' in args.split() if isinstance(args, str) else args and 'profile' in args):
+            profile = profiles.get_profile(arguments.profile)
+            if profile:
+                Console.info(f"Using profile '{arguments.profile}'")
+                service = profile.get("service", service)
+                provider = profile.get("provider", provider)
+                nosplit = profile.get("nosplit", nosplit)
+            else:
+                Console.error(f"Profile '{arguments.profile}' not found.")
+                return
+
+        vpn = Vpn(service,
                    timeout=arguments.timeout,
                    debug=arguments["-v"],
-                   provider=arguments.provider)
+                   provider=provider)
 
         if arguments.connect:
             vpn.anyconnect_checker(arguments['choco'])
-            if arguments['service']:
-                service = arguments['service'].lower()
-                status = vpn.pw_fetcher(service)
+            if service:
+                service_lower = service.lower()
+                status = vpn.pw_fetcher(service_lower)
                 
                 if not status:
-                    if vpn.is_user_auth(service):
+                    if vpn.is_user_auth(service_lower):
                         Console.error("failed")
                         return
                 else:
                     Console.ok("Connecting ... ")
                     vpn.connect({'user': status[0],
-                                  'pw': status[1],
-                                  'service': service,
-                                  'nosplit': arguments['nosplit']})
+                                   'pw': status[1],
+                                   'service': service_lower,
+                                   'nosplit': nosplit})
                     if vpn.enabled():
                         Console.ok("ok")
                     else:
@@ -110,8 +129,8 @@ class VpnCommand(PluginCommand):
             Console.ok("Connecting ... ")
             vpn.connect(
                 {
-                    'service': "uva",
-                    'nosplit': arguments['nosplit'],
+                    'service': service or "uva",
+                    'nosplit': nosplit,
                 }
             )
             if vpn.enabled():
@@ -217,6 +236,65 @@ class VpnCommand(PluginCommand):
                 else:
                     Console.error(f"Failed to add passphrase to keychain: {e.stderr.strip()}")
                 return False
+
+        elif 'profile' in (args.split() if isinstance(args, str) else args):
+            from cloudmesh.vpn import profiles
+            arg_list = args.split() if isinstance(args, str) else args
+            
+            if 'list' in arg_list:
+                profs = profiles.load_profiles()
+                if not profs:
+                    Console.info("No profiles found.")
+                else:
+                    Console.info("VPN Profiles:")
+                    for name, config in profs.items():
+                        Console.info(f" - {name}: service={config['service']}, provider={config['provider']}, nosplit={config['nosplit']}")
+                return
+
+            if 'add' in arg_list:
+                name = arguments.profile if not arguments.profile == 'profile' else None # This is tricky with map_parameters
+                # Since map_parameters might have put 'profile' in arguments.profile, 
+                # we need to be careful. Let's check arguments.
+                
+                # Re-evaluating: if the user typed 'vpn profile add --name=work --service=uva'
+                # map_parameters might not have 'name'. Let's check if we can use arguments.
+                
+                # For simplicity in this implementation, I'll assume the user provides 
+                # the name as the first argument after 'add' or via a flag if I add it.
+                # Let's use a simpler approach for 'add' and 'remove'.
+                
+                # I'll use a helper to extract the name from the arg_list
+                try:
+                    idx = arg_list.index('add')
+                    name = arg_list[idx + 1]
+                except (ValueError, IndexError):
+                    Console.error("Please specify a profile name: vpn profile add <name> [--service=SERVICE] ...")
+                    return
+
+                service = arguments.service or "uva"
+                provider = arguments.provider
+                nosplit = arguments.nosplit
+                
+                if profiles.add_profile(name, service, provider, nosplit):
+                    Console.ok(f"Profile '{name}' added successfully.")
+                return
+
+            if 'remove' in arg_list:
+                try:
+                    idx = arg_list.index('remove')
+                    name = arg_list[idx + 1]
+                except (ValueError, IndexError):
+                    Console.error("Please specify a profile name: vpn profile remove <name>")
+                    return
+                
+                if profiles.remove_profile(name):
+                    Console.ok(f"Profile '{name}' removed successfully.")
+                else:
+                    Console.error(f"Profile '{name}' not found.")
+                return
+            
+            Console.error("Invalid profile command. Use: vpn profile [add|remove|list]")
+            return
 
         elif arguments.watch:
             # Determine if we should run once or loop
