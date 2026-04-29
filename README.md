@@ -1,43 +1,113 @@
 # cloudmesh-vpn
 
-This library is a wrapper around [openconnect](https://gitlab.com/openconnect/openconnect)with added functionality. Additional features include secure password saving that uses the native-OS keyring, as well as vpn-slicing, which only sends traffic destined for school servers through the VPN and keeps other traffic out of the tunnel. It also allows an easy easy way to install openconnect via a package manager (chocolatey for Windows, homebrew for macOS) without requiring any other dependencies besides Python. The package manager is installed for you on-the-fly which installs openconnect.
+This library is a wrapper around [openconnect](https://gitlab.com/openconnect/openconnect)
+with added functionality. Key features include secure password saving using
+the native OS keyring and **VPN-Slicing (Split Tunneling)**.
 
-| School  | Tested | VPN-Slicing |
-| ------- | ------ | ----------- |
-| UVA&nbsp; <img src="https://upload.wikimedia.org/wikipedia/commons/d/dd/University_of_Virginia_Rotunda_logo.svg" alt="uva" height="15"/> | ✅ | ✅ |
-| FIU&nbsp; <img src="https://digicdn.fiu.edu/core/_assets/images/logo-top.svg" alt="fiu" width="25"/> | ✅ | ✅ |
-| UFL&nbsp; <img src="https://www.ufl.edu/wp-content/uploads/sites/5/2022/12/UF-logo-500x500-1.png" alt="uf" height="15"/> | ✅ | ✅ |
-| NYU | ✅ | ❌ |
+VPN-Slicing ensures that only traffic destined for specific school servers is
+routed through the VPN tunnel, while all other internet traffic remains on
+your local connection. This improves performance, preserves privacy, and
+allows you to maintain access to local network resources while connected
+to the VPN.
+
+The library also provides an easy way to install OpenConnect via package
+managers (Chocolatey for Windows, Homebrew for macOS) automatically on-the-fly,
+requiring no dependencies other than Python.
+
+## Table of Contents
+- [Install](#install)
+- [Configuration](#configuration)
+- [Usage](#usage)
+- [Troubleshooting](#troubleshooting)
+- [FAQ](#faq)
+- [Changelog](#changelog)
+- [Acknowledgments](#acknowledgments)
+- [Manual Page](#manual-page)
+
+## Field tests
+
+| School | Tested | VPN-Slicing |
+| :--- | :---: | :---: |
+| **UVA** <img src="https://upload.wikimedia.org/wikipedia/commons/d/dd/University_of_Virginia_Rotunda_logo.svg" alt="uva" height="15"/> | ✅ | ✅ |
+| **FIU** <img src="https://digicdn.fiu.edu/core/_assets/images/logo-top.svg" alt="fiu" width="25"/> | ✅ | ✅ |
+| **UFL** <img src="https://www.ufl.edu/wp-content/uploads/sites/5/2022/12/UF-logo-500x500-1.png" alt="uf" height="15"/> | ✅ | ✅ |
+| **NYU** | ✅ | ❌ |
 
 ## Install
+
+> [!TIP]
+> **Best Practice:** It is highly recommended to use a virtual environment
+> (such as `venv` or `pyenv`) to install this library. This prevents
+> conflicts with other Python packages on your system and keeps your
+> global environment clean.
 
 ### Windows
 
 Open any terminal (git bash, cmd, powershell) as administrator.
 
-[Download Python from the Python website.](https://www.python.org/downloads/) Your Python version can be checked
-with the command `python -V`. Try doing the following.
+[Download Python from the Python website.](https://www.python.org/downloads/)
+Your Python version can be checked with the command `python -V`.
+Try doing the following.
 
+**Check Python version:**
 ```bash
 python -V
-# hopefully that works, if not, use python3 instead of python from now on.
-# in git bash run as administrator:
-python -m venv ~/ENV3
-# or, in cmd run as administrator:
-python -m venv "%USERPROFILE%\ENV3"
-#
-# if you are in git bash then:
-source ~/ENV3/Scripts/activate
-# if you are in cmd then:
-"%USERPROFILE%\ENV3\Scripts\activate.bat"
 ```
+*If `python` is not found, use `python3` for the following commands.*
+
+**Create Virtual Environment (Run as Administrator):**
+- **Git Bash:**
+  ```bash
+  python -m venv ~/ENV3
+  source ~/ENV3/Scripts/activate
+  ```
+- **CMD / PowerShell:**
+  ```bash
+  python -m venv "%USERPROFILE%\ENV3"
+  "%USERPROFILE%\ENV3\Scripts\activate.bat"
+  ```
 
 ```bash
 # now you see (ENV3)
 pip install cloudmesh-vpn
 ```
 
+### macOS
+
+1. **Install Dependencies:**
+   ```bash
+   brew install openconnect vpn-slice
+   ```
+2. **Install Library:**
+   ```bash
+   pip install cloudmesh-vpn
+   ```
+
+### Linux (Ubuntu/Debian)
+
+1. **Install Dependencies:**
+   ```bash
+   sudo apt update
+   sudo apt install openssl openconnect network-manager-openconnect
+   ```
+   *If using GNOME:*
+   ```bash
+   sudo apt install network-manager-gnome network-manager-openconnect-gnome
+   ```
+2. **Install Library:**
+   ```bash
+   pip install cloudmesh-vpn
+   ```
+
+## Configuration
+
+Most users can start using the tool immediately after installation. If you
+are using a service that requires custom certificates (like UVA), please
+see the **FAQ** section for a detailed setup guide.
+
 ## Usage
+
+### Connecting to VPN
 
 To connect to the UVA Anywhere VPN, run
 
@@ -47,19 +117,24 @@ To connect to the UVA Anywhere VPN, run
 cms vpn connect
 ```
 
-For other organizations, the `--service` flag can be used:
+For other organizations, use the `--service` flag:
 
 ```bash
 cms vpn connect --service=ufl
-# possible services are uva fiu ufl
+# Supported services: uva, fiu, ufl
 ```
 
-Note: On macOS, the connection now runs as a persistent background process. 
-You can monitor the connection status and active routes using:
+### VPN-Slicing (Split Tunneling)
+
+By default, `cloudmesh-vpn` enables VPN-Slicing to optimize your
+connection. If you need to route **all** traffic through the VPN
+(disabling split tunneling), use the `--nosplit` flag:
 
 ```bash
-cms vpn watch
+cms vpn connect --nosplit
 ```
+
+Note: On macOS, the connection now runs as a persistent background process.
 
 To disconnect from current VPN, run
 
@@ -67,21 +142,63 @@ To disconnect from current VPN, run
 cms vpn disconnect
 ```
 
-To see info regarding your connection, run
+### Command Shorthands
+
+For faster access, you can use the following shorthand aliases:
+
+- `+` is an alias for `connect`
+- `-` is an alias for `disconnect`
+
+**Example:**
+```bash
+cms vpn +       # Connects to the VPN
+cms vpn -       # Disconnects from the VPN
+```
+
+### Monitoring
+
+To see information regarding your connection, run:
 
 ```bash
 cms vpn info
 ```
-The `info` command now displays a formatted table with your current IP and location.
+The `info` command displays a formatted table with your current IP and location.
 
+On macOS, you can monitor the connection status and active routes in real-time:
 
-you can also on Mac use in addition 
+```bash
+cms vpn watch
+```
 
+To run the monitor once and exit:
 ```bash
 cms vpn watch now
 ```
 
+### Keychain Management
 
+If you are using the `openconnect-keychain` provider, you can manage your private key passphrase securely:
+
+To add your passphrase to the macOS Keychain:
+```bash
+cms vpn keychain
+```
+
+To remove your passphrase from the macOS Keychain:
+```bash
+cms vpn keychain remove
+```
+
+### Removing Cisco AnyConnect
+
+If you have the official Cisco AnyConnect client installed, it is
+recommended to uninstall it to avoid conflicts with OpenConnect. You can
+do this by running the official uninstaller:
+
+```bash
+sudo /opt/cisco/anyconnect/bin/vpn_uninstall.sh
+```
+If the uninstaller is not found, you can manually remove the application from your `/Applications` folder.
 
 ## Troubleshooting
 
@@ -99,130 +216,58 @@ net stop dnscache
 ping google.com
 ```
 
-## Linux and macOS
+## FAQ
 
-### Requirements
+### How do I set up and convert certificates for UVA?
 
-We use the command `openconnect`. To check if it is available please use
+If you are connecting to the University of Virginia, follow these steps to
+prepare your certificates:
 
-```bash
-$ which openconnect
-```
+1. **Create the directory:**
+   ```bash
+   mkdir -p ~/.ssh/uva
+   cd ~/.ssh/uva
+   ```
 
-If it is not available, on macOS do:
+2. **Download the Root Certificate:**
+   ```bash
+   wget --no-check-certificate https://download.its.virginia.edu/local-auth/universal/usher.cer
+   ```
 
-```bash
-brew install openconnect vpn-slice
-```
+3. **Obtain your User Certificate:**
+   Go to [SecureW2](https://cloud.securew2.com/public/82116/limited/?device=Unknown),
+   complete the form, and download your `.p12` file. Move this file to
+   `~/.ssh/uva/user.p12`.
 
-you can install it on Ubuntu with 
+4. **Convert the certificates:**
+   ```bash
+   openssl pkcs12 -in user.p12 -nocerts -nodes -out user.key
+   openssl pkcs12 -in user.p12 -clcerts -nokeys -out user.crt
+   openssl x509 -inform DER -in usher.cer -out usher.crt
+   ```
 
-```bash
-$ sudo apt install openssl
-$ sudo apt install openconnect
-$ sudo apt install network-manager-openconnect
-```
-and in case you use gnome also:
+5. **Verify the files:**
+   Run `ls ~/.ssh/uva/`. You should see: `user.crt`, `user.key`, `user.p12`,
+   `usher.cer`, and `usher.crt`.
 
-```bash
-$ sudo apt install network-manager-gnome
-$ sudo apt install network-manager-openconnect-gnome
-```
+### What is VPN-Slicing and why should I use it?
 
-### Getting certificates
+VPN-Slicing (Split Tunneling) ensures that only traffic destined for school
+servers goes through the VPN. Your regular internet traffic stays on your
+local connection, which improves speed and allows you to access local
+devices (like printers) while connected.
 
-We have tested this tool only with University of Virginia, but it should be simple to adapt. Just follow the 
-instructions to obtain the certificates from your provider.
+### Why do I need to use a virtual environment?
 
-At UVA you find the certificate and other documentation at 
+Using a virtual environment (`venv`) prevents this library's dependencies
+from conflicting with other Python projects on your system, ensuring a
+stable and clean installation.
 
-* <https://www.rc.virginia.edu/userinfo/linux/uva-anywhere-vpn-linux/>
+### How do I handle password prompts on macOS?
 
-we place all certificates into ~/.ssh/uva
-
-```
-mkdir -p ~/.ssh/uva
-# You will receive a file ending in .p12. In this example we will assume it is named mst3k.p12.
-cd ~/.ssh/uva
-# wget https://download.its.virginia.edu/local-auth/universal/usher.cer
-wget --no-check-certificate https://download.its.virginia.edu/local-auth/universal/usher.cer
-```
-
-To get a certificate for your device, go to 
-
-* <https://cloud.securew2.com/public/82116/limited/?device=Unknown>
-
-Fill it out and get the key. You will receive a 
-file ending in .p12. In this example we will assume it 
-is named mst3k.p12 and place it into ~/.ssh/uva/user.p12
-
-It is important for us to rename this key to user.p12
-so we have a simpler way of identifying it and writing this documentation.
-
-Now convert the keys and certificates with the following commands
-
-```bash
-cd ~/.ssh/uva
-openssl pkcs12 -in user.p12 -nocerts -nodes -out user.key
-openssl pkcs12 -in user.p12 -clcerts -nokeys -out user.crt
-openssl x509 -inform DER -in usher.cer -out usher.crt
-```
-
-
-Now your UVA directory should have the following files in it.
-
-```
-ls ~/.ssh/uva/
-user.crt  user.key  user.p12  usher.cer  usher.crt
-```
-
-
-### Install and using the command
-
-You can now use the cloudmesh cms vpn command.
-
-
-```bash
-$ pip install cloudmesh-vpn
-$ cms help
-```
-
-To connect use 
-
-
-```bash
-$ cms vpn connect 
-```
-
-On macOS, OpenConnect is the default and only supported provider for better split-tunneling via `vpn-slice`. The official Cisco AnyConnect client is no longer supported.
-
-### Keychain Management
-If you are using the `openconnect-keychain` provider, you can manage your private key passphrase securely:
-
-To add your passphrase to the macOS Keychain:
-```bash
-cms vpn keychain
-```
-
-To remove your passphrase from the macOS Keychain:
-```bash
-cms vpn keychain remove
-```
-
-### Removing Cisco AnyConnect
-If you have the official Cisco AnyConnect client installed, it is recommended to uninstall it to avoid conflicts with OpenConnect. You can do this by running the official uninstaller:
-
-```bash
-sudo /opt/cisco/anyconnect/bin/vpn_uninstall.sh
-```
-If the uninstaller is not found, you can manually remove the application from your `/Applications` folder.
-
-
-To disconnect
-
-```bash
-$ cms vpn disconnect
-```
+You can use the `cms vpn keychain` command to securely store your private
+key passphrase in the macOS Keychain, eliminating the need to enter it
+manually every time you connect.
 
 ## Changelog
 
@@ -230,10 +275,12 @@ For a detailed list of changes, see [CHANGELOG.md](CHANGELOG.md).
 
 ## Acknowledgments
 
-An eraly verion of this was in part developed to support the NSF
-CyberTraining: CIC: CyberTraining for Students and Technologies
-from Generation Z with the award numbers 1829704 and 2200409.
-gs
+An early version of cloudmesh-vpn was in part developed to support the NSF
+CyberTraining: CIC: CyberTraining for Students and Technologies from
+Generation Z with the award numbers 1829704 and 2200409 and used by
+participating students. Version 6 was in part refactored with the help of
+Gemma4.
+
 
 ## Manual Page
 
@@ -243,8 +290,10 @@ Command vpn
 ===========
 
   Usage:
-        vpn connect [--service=SERVICE] [--timeout=TIMEOUT] [-v] [--choco] [--nosplit] [--provider=PROVIDER]
-        vpn + [--service=SERVICE] [--timeout=TIMEOUT] [-v] [--choco] [--nosplit] [--provider=PROVIDER]
+        vpn connect [--service=SERVICE] [--timeout=TIMEOUT] 
+                    [-v] [--choco] [--nosplit] [--provider=PROVIDER]
+        vpn + [--service=SERVICE] [--timeout=TIMEOUT] 
+              [-v] [--choco] [--nosplit] [--provider=PROVIDER]
         vpn disconnect [-v]
         vpn - [-v]
         vpn status [-v]
@@ -258,7 +307,8 @@ Command vpn
   Options:
        -v       debug [default: False]
        --choco  installs chocolatey [default: False]
-        --provider=PROVIDER  vpn provider for macOS (openconnect-decrypted, openconnect-keychain, openconnect) [default: openconnect-decrypted]
+        --provider=PROVIDER  vpn provider for macOS (openconnect-decrypted, 
+                   openconnect-keychain, openconnect) [default: openconnect-decrypted]
 
           Description:
             vpn info
