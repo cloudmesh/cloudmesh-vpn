@@ -12,7 +12,7 @@ dynamic = ["version"]
 description = "Virtual Private Network connection in the cloudmesh suite"
 readme = "README.md"
 requires-python = ">=3.8"
-license = {file = "LICENSE"}
+license = {text = "Apache-2.0"}
 authors = [
     {name = "Gregor von Laszewski", email = "laszewski@gmail.com"},
     {name = "J.P. Fleischer", email = "jacquespfleischer@gmail.com"}
@@ -38,10 +38,16 @@ classifiers = [
     "Operating System :: OS Independent",
     "Operating System :: MacOS :: MacOS X",
     "Operating System :: POSIX :: Linux",
-    "Operating System :: Microsoft :: Windows :: Windows 10",
+    "Operating System :: Microsoft :: Windows :: Windows 11",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Topic :: Scientific/Engineering",
     "Topic :: Software Development :: Libraries",
     "Topic :: Software Development :: User Interfaces",
@@ -55,6 +61,7 @@ dependencies = [
     "cloudmesh-cmd5",
     "cloudmesh-sys",
     "cloudmesh-configuration",
+    "cloudmesh-ai-common",
     'vpn-slice ; platform_system != "Windows"',
     "keyring",
     "pexpect",
@@ -63,6 +70,7 @@ dependencies = [
     "rich",
     "psutil",
     "pyyaml",
+    "click",
 ]
 
 [project.urls]
@@ -74,10 +82,19 @@ Changelog = "https://github.com/cloudmesh/cloudmesh-vpn/blob/main/CHANGELOG.md"
 
 [tool.setuptools.packages.find]
 where = ["src"]
-include = ["cloudmesh.vpn", "cloudmesh.vpn.*"]
+include = ["cloudmesh.ai.vpn", "cloudmesh.ai.vpn.*"]
 
 [tool.setuptools.package-data]
-"cloudmesh.vpn" = ["*.yaml"]
+"cloudmesh.ai.vpn" = ["*.yaml"]
 
 [tool.setuptools.dynamic]
 version = {file = "VERSION"}
+
+[project.scripts]
+vpn = "cloudmesh.ai.vpn.cli:cli"
+
+[project.entry-points."cloudmesh.ai.command"]
+vpn = "cloudmesh.ai.vpn.command.vpn:register"
+
+[project.entry-points."cloudmesh.command"]
+vpn = "cloudmesh.ai.vpn.command.vpn:register"
